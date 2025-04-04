@@ -33,6 +33,8 @@ public class AddStoryViewModel extends AndroidViewModel {
     
     private MutableLiveData<Boolean> isImporting = new MutableLiveData<>(false);
     private MutableLiveData<String> importResult = new MutableLiveData<>();
+    private MutableLiveData<Boolean> useAiAlignment = new MutableLiveData<>(false);
+    private MutableLiveData<String> importStatus = new MutableLiveData<>();
     
     public AddStoryViewModel(@NonNull Application application) {
         super(application);
@@ -127,12 +129,27 @@ public class AddStoryViewModel extends AndroidViewModel {
         return importResult;
     }
     
+    public LiveData<Boolean> getUseAiAlignment() {
+        return useAiAlignment;
+    }
+    
+    public void setUseAiAlignment(boolean useAi) {
+        useAiAlignment.setValue(useAi);
+    }
+    
+    public LiveData<String> getImportStatus() {
+        return importStatus;
+    }
+    
     public void importStory() {
         if (isImporting.getValue() != null && isImporting.getValue()) {
             return;
         }
         
         isImporting.setValue(true);
+        importStatus.setValue("Starting import...");
+        
+        boolean useAi = useAiAlignment.getValue() != null && useAiAlignment.getValue();
         
         repository.importCustomStory(
                 title.getValue(),
@@ -141,6 +158,7 @@ public class AddStoryViewModel extends AndroidViewModel {
                 textFileUri.getValue(),
                 audioFileUri.getValue(),
                 timingFileUri.getValue(),
+                useAi,
                 new StoryRepository.ImportStoryCallback() {
                     @Override
                     public void onSuccess(String storyId) {
@@ -152,6 +170,11 @@ public class AddStoryViewModel extends AndroidViewModel {
                     public void onError(String errorMessage) {
                         isImporting.postValue(false);
                         importResult.postValue("error: " + errorMessage);
+                    }
+                    
+                    @Override
+                    public void onProgressUpdate(String status) {
+                        importStatus.postValue(status);
                     }
                 }
         );

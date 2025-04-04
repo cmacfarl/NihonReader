@@ -193,6 +193,22 @@
                 android:textSize="12sp"
                 android:textColor="@color/textColorSecondary"
                 android:layout_marginBottom="8dp" />
+                
+            <CheckBox
+                android:id="@+id/checkbox_use_ai"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/use_ai_alignment"
+                android:layout_marginBottom="8dp" />
+                
+            <TextView
+                android:id="@+id/text_view_ai_description"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ai_alignment_description"
+                android:textSize="12sp"
+                android:textColor="@color/textColorSecondary"
+                android:layout_marginBottom="8dp" />
 
             <FrameLayout
                 android:id="@+id/timing_file_container"
@@ -251,6 +267,15 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="16dp"
+                android:visibility="gone" />
+                
+            <TextView
+                android:id="@+id/text_view_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:textColor="@color/textColorSecondary"
                 android:visibility="gone" />
 
         </LinearLayout>

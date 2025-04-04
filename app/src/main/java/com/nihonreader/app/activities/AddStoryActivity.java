@@ -8,6 +8,7 @@ import android.provider.OpenableColumns;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -59,6 +60,8 @@ public class AddStoryActivity extends AppCompatActivity {
     private TextView textViewTimingFileName;
     
     private ProgressBar progressBar;
+    private TextView textViewStatus;
+    private CheckBox checkboxUseAi;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,6 +108,8 @@ public class AddStoryActivity extends AppCompatActivity {
         textViewTimingFileName = findViewById(R.id.text_view_timing_file_name);
         
         progressBar = findViewById(R.id.progress_bar);
+        textViewStatus = findViewById(R.id.text_view_status);
+        checkboxUseAi = findViewById(R.id.checkbox_use_ai);
     }
     
     private void setupObservers() {
@@ -168,6 +173,7 @@ public class AddStoryActivity extends AppCompatActivity {
         // Observe importing state
         viewModel.getIsImporting().observe(this, isImporting -> {
             progressBar.setVisibility(isImporting ? View.VISIBLE : View.GONE);
+            textViewStatus.setVisibility(isImporting ? View.VISIBLE : View.GONE);
             buttonImport.setEnabled(!isImporting);
         });
         
@@ -181,6 +187,18 @@ public class AddStoryActivity extends AppCompatActivity {
                     Toast.makeText(this, R.string.error_import, Toast.LENGTH_SHORT).show();
                 }
             }
+        });
+        
+        // Observe import status
+        viewModel.getImportStatus().observe(this, status -> {
+            if (status != null && !status.isEmpty()) {
+                textViewStatus.setText(status);
+            }
+        });
+        
+        // Observe AI alignment setting
+        viewModel.getUseAiAlignment().observe(this, useAi -> {
+            checkboxUseAi.setChecked(useAi != null && useAi);
         });
     }
     
@@ -252,6 +270,11 @@ public class AddStoryActivity extends AppCompatActivity {
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("text/*");
             startActivityForResult(intent, REQUEST_PICK_TIMING);
+        });
+        
+        // AI checkbox
+        checkboxUseAi.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            viewModel.setUseAiAlignment(isChecked);
         });
         
         // Import button

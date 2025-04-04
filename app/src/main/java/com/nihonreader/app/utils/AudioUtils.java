@@ -2,6 +2,12 @@ package com.nihonreader.app.utils;
 
 import android.util.Log;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 import com.nihonreader.app.models.AudioSegment;
 
 import java.util.ArrayList;
@@ -18,9 +24,9 @@ public class AudioUtils {
     private static final Pattern TIMING_PATTERN = Pattern.compile("\\[(\\d{2}):(\\d{2})\\.(\\d{2})\\]\\s*(.*)");
     
     /**
-     * Parse a text file containing timestamps and corresponding text segments
-     * Format expected: [00:00.00] Text segment one
-     *                  [00:05.25] Text segment two
+     * Parse a file containing timestamps and corresponding text segments
+     * Supports both text format: [00:00.00] Text segment one
+     * and JSON format with timestamps and Japanese text segments
      * @param content The content of the timing file
      * @return List of AudioSegment objects
      */
@@ -31,6 +37,17 @@ public class AudioUtils {
             return segments;
         }
         
+        // Check if content is JSON
+        if (content.trim().startsWith("{") || content.trim().startsWith("[")) {
+            try {
+                return parseJsonTimingFile(content);
+            } catch (JsonSyntaxException e) {
+                Log.e(TAG, "Failed to parse JSON timing file", e);
+                // Fall back to text format parsing if JSON parsing fails
+            }
+        }
+        
+        // If not JSON or JSON parsing failed, try parsing as text format
         String[] lines = content.split("\n");
         
         for (int i = 0; i < lines.length; i++) {
@@ -68,6 +85,166 @@ public class AudioUtils {
         }
         
         return segments;
+    }
+    
+    /**
+     * Parse a JSON timing file containing segments with start/end times and text
+     * Supports both array format and object format with segments array
+     * @param jsonContent The JSON content string
+     * @return List of AudioSegment objects
+     */
+    private static List<AudioSegment> parseJsonTimingFile(String jsonContent) {
+        List<AudioSegment> segments = new ArrayList<>();
+        
+        try {
+            JsonElement jsonElement = JsonParser.parseString(jsonContent);
+            JsonArray segmentsArray;
+            
+            // Handle both array and object format
+            if (jsonElement.isJsonArray()) {
+                segmentsArray = jsonElement.getAsJsonArray();
+            } else if (jsonElement.isJsonObject()) {
+                JsonObject jsonObject = jsonElement.getAsJsonObject();
+                // Look for a segments array in the JSON object
+                if (jsonObject.has("segments")) {
+                    segmentsArray = jsonObject.getAsJsonArray("segments");
+                } else {
+                    // Try to find any array property
+                    segmentsArray = null;
+                    for (String key : jsonObject.keySet()) {
+                        if (jsonObject.get(key).isJsonArray()) {
+                            segmentsArray = jsonObject.getAsJsonArray(key);
+                            break;
+                        }
+                    }
+                    
+                    if (segmentsArray == null) {
+                        // No array found, return empty list
+                        Log.e(TAG, "No segments array found in JSON");
+                        return segments;
+                    }
+                }
+            } else {
+                // Invalid JSON format
+                Log.e(TAG, "Invalid JSON format: neither array nor object");
+                return segments;
+            }
+            
+            // Process each segment
+            for (int i = 0; i < segmentsArray.size(); i++) {
+                JsonObject segment = segmentsArray.get(i).getAsJsonObject();
+                
+                // Extract start time, searching for common key names
+                long startTime = -1;
+                if (segment.has("start")) {
+                    startTime = getTimeInMillis(segment.get("start"));
+                } else if (segment.has("startTime")) {
+                    startTime = getTimeInMillis(segment.get("startTime"));
+                } else if (segment.has("start_time")) {
+                    startTime = getTimeInMillis(segment.get("start_time"));
+                } else if (segment.has("from")) {
+                    startTime = getTimeInMillis(segment.get("from"));
+                }
+                
+                // Extract end time, searching for common key names
+                long endTime = -1;
+                if (segment.has("end")) {
+                    endTime = getTimeInMillis(segment.get("end"));
+                } else if (segment.has("endTime")) {
+                    endTime = getTimeInMillis(segment.get("endTime"));
+                } else if (segment.has("end_time")) {
+                    endTime = getTimeInMillis(segment.get("end_time"));
+                } else if (segment.has("to")) {
+                    endTime = getTimeInMillis(segment.get("to"));
+                }
+                
+                // If we're missing start/end time but have following segment, use its start time
+                if (i < segmentsArray.size() - 1 && endTime == -1) {
+                    JsonObject nextSegment = segmentsArray.get(i + 1).getAsJsonObject();
+                    if (nextSegment.has("start")) {
+                        endTime = getTimeInMillis(nextSegment.get("start"));
+                    } else if (nextSegment.has("startTime")) {
+                        endTime = getTimeInMillis(nextSegment.get("startTime"));
+                    } else if (nextSegment.has("start_time")) {
+                        endTime = getTimeInMillis(nextSegment.get("start_time"));
+                    } else if (nextSegment.has("from")) {
+                        endTime = getTimeInMillis(nextSegment.get("from"));
+                    }
+                }
+                
+                // Default end time if still missing
+                if (endTime == -1 && startTime != -1) {
+                    endTime = startTime + 5000; // Default 5 seconds if can't determine
+                }
+                
+                // Extract text, searching for common key names
+                String text = null;
+                if (segment.has("text")) {
+                    text = segment.get("text").getAsString();
+                } else if (segment.has("content")) {
+                    text = segment.get("content").getAsString();
+                } else if (segment.has("transcript")) {
+                    text = segment.get("transcript").getAsString();
+                } else if (segment.has("value")) {
+                    text = segment.get("value").getAsString();
+                } else {
+                    // Look for any string property
+                    for (String key : segment.keySet()) {
+                        if (segment.get(key).isJsonPrimitive() && 
+                            segment.get(key).getAsJsonPrimitive().isString()) {
+                            text = segment.get(key).getAsString();
+                            break;
+                        }
+                    }
+                }
+                
+                // Add segment if we have all required fields
+                if (startTime != -1 && endTime != -1 && text != null && !text.isEmpty()) {
+                    segments.add(new AudioSegment(startTime, endTime, text));
+                } else {
+                    Log.w(TAG, "Skipping segment missing required fields: " + segment);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing JSON timing file", e);
+        }
+        
+        return segments;
+    }
+    
+    /**
+     * Extract time in milliseconds from a JSON element
+     * Supports numeric (milliseconds) or string (MM:SS.SS format) values
+     */
+    private static long getTimeInMillis(JsonElement element) {
+        if (element.isJsonPrimitive()) {
+            if (element.getAsJsonPrimitive().isNumber()) {
+                // Direct milliseconds value
+                return element.getAsLong();
+            } else if (element.getAsJsonPrimitive().isString()) {
+                String timeStr = element.getAsString();
+                
+                // Try to parse as MM:SS.SS format
+                Matcher matcher = TIMING_PATTERN.matcher("[" + timeStr + "] dummy");
+                if (matcher.matches()) {
+                    int minutes = Integer.parseInt(matcher.group(1));
+                    int seconds = Integer.parseInt(matcher.group(2));
+                    int centiseconds = Integer.parseInt(matcher.group(3));
+                    return (minutes * 60 + seconds) * 1000 + centiseconds * 10;
+                }
+                
+                // Try to parse as seconds with decimal
+                try {
+                    double seconds = Double.parseDouble(timeStr);
+                    return (long) (seconds * 1000);
+                } catch (NumberFormatException ignored) {
+                    // Not a valid number format
+                }
+            }
+        }
+        
+        // Couldn't parse the time
+        return -1;
     }
     
     /**

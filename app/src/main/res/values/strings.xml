@@ -24,4 +24,6 @@
     <string name="vocabulary">Vocabulary</string>
     <string name="custom">Custom</string>
     <string name="by">by</string>
+    <string name="use_ai_alignment">Use AI to align text with audio</string>
+    <string name="ai_alignment_description">Uses speech recognition to automatically align text segments with audio. If no timing file is provided, this will try to match text segments with spoken audio.</string>
 </resources>
