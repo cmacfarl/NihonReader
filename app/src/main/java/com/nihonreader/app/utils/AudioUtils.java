@@ -389,4 +389,27 @@ public class AudioUtils {
         int seconds = totalSeconds % 60;
         return String.format("%d:%02d", minutes, seconds);
     }
+    
+    /**
+     * Parse time in mm:ss format to milliseconds
+     * @param timeString Time string in the format mm:ss (e.g., "1:30" for 1 minute 30 seconds)
+     * @return Time in milliseconds, or 0 if parsing fails
+     */
+    public static long parseTimeString(String timeString) {
+        try {
+            String[] parts = timeString.split(":");
+            if (parts.length == 2) {
+                int minutes = Integer.parseInt(parts[0]);
+                int seconds = Integer.parseInt(parts[1]);
+                return (minutes * 60 + seconds) * 1000L;
+            } else if (parts.length == 1) {
+                // Assume seconds only
+                int seconds = Integer.parseInt(parts[0]);
+                return seconds * 1000L;
+            }
+        } catch (NumberFormatException e) {
+            // Return 0 if parsing fails
+        }
+        return 0;
+    }
 }

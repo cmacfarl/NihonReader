@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.nihonreader.app.R;
+import com.nihonreader.app.utils.AudioUtils;
 import com.nihonreader.app.models.AudioSegment;
 
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
         void onEndTimeSet(int position, long timestamp);
         void onPlaySegment(int position, long startTime, long endTime);
         void onPlaybackPositionChanged(long position);
+        void onBeginTimeCaptureForSegment(int position);
     }
     
     public TimestampAdapter(MediaPlayer mediaPlayer, OnTimestampEditListener listener) {
@@ -57,11 +59,11 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
         // Set segment text
         holder.textSegment.setText(segment.getText());
         
-        // Set start time
-        holder.editStartTime.setText(String.valueOf(segment.getStart()));
+        // Set start time in mm:ss format
+        holder.editStartTime.setText(AudioUtils.formatTime(segment.getStart()));
         
-        // Set end time
-        holder.editEndTime.setText(String.valueOf(segment.getEnd()));
+        // Set end time in mm:ss format
+        holder.editEndTime.setText(AudioUtils.formatTime(segment.getEnd()));
         
         // Store position for use in listeners
         holder.position = position;
@@ -70,10 +72,14 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
         setupStartTimeWatcher(holder);
         setupEndTimeWatcher(holder);
         
-        // Play segment button
+        // Play segment button - now used to start time capture
         holder.buttonPlaySegment.setOnClickListener(v -> {
             if (listener != null) {
-                listener.onPlaySegment(position, segment.getStart(), segment.getEnd());
+                // This now signals the start of time capture for this segment
+                listener.onBeginTimeCaptureForSegment(position);
+                
+                // Change button text to indicate it's in capture mode
+                holder.buttonPlaySegment.setText(R.string.capturing);
             }
         });
         
@@ -81,7 +87,7 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
         holder.buttonSetStart.setOnClickListener(v -> {
             if (mediaPlayer != null && listener != null) {
                 long currentPosition = mediaPlayer.getCurrentPosition();
-                holder.editStartTime.setText(String.valueOf(currentPosition));
+                holder.editStartTime.setText(AudioUtils.formatTime(currentPosition));
                 listener.onStartTimeSet(position, currentPosition);
             }
         });
@@ -90,8 +96,17 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
         holder.buttonSetEnd.setOnClickListener(v -> {
             if (mediaPlayer != null && listener != null) {
                 long currentPosition = mediaPlayer.getCurrentPosition();
-                holder.editEndTime.setText(String.valueOf(currentPosition));
+                holder.editEndTime.setText(AudioUtils.formatTime(currentPosition));
                 listener.onEndTimeSet(position, currentPosition);
+                
+                // Auto-update the start time of the next segment if available
+                int nextPosition = position + 1;
+                if (nextPosition < segments.size()) {
+                    AudioSegment nextSegment = segments.get(nextPosition);
+                    nextSegment.setStart(currentPosition);
+                    // Post the notifyItemChanged call to the main thread to avoid RecyclerView exception
+                    v.post(() -> notifyItemChanged(nextPosition));
+                }
             }
         });
     }
@@ -116,7 +131,7 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
             public void afterTextChanged(Editable s) {
                 if (s.length() > 0 && listener != null) {
                     try {
-                        long time = Long.parseLong(s.toString());
+                        long time = AudioUtils.parseTimeString(s.toString());
                         listener.onStartTimeSet(holder.position, time);
                     } catch (NumberFormatException e) {
                         // Ignore invalid number format
@@ -149,8 +164,18 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
             public void afterTextChanged(Editable s) {
                 if (s.length() > 0 && listener != null) {
                     try {
-                        long time = Long.parseLong(s.toString());
+                        long time = AudioUtils.parseTimeString(s.toString());
+                        // Update current segment's end time
                         listener.onEndTimeSet(holder.position, time);
+                        
+                        // Auto-update the start time of the next segment if available
+                        int nextPosition = holder.position + 1;
+                        if (nextPosition < segments.size()) {
+                            AudioSegment nextSegment = segments.get(nextPosition);
+                            nextSegment.setStart(time);
+                            // Post the notifyItemChanged call to the main thread to avoid RecyclerView exception
+                            holder.itemView.post(() -> notifyItemChanged(nextPosition));
+                        }
                     } catch (NumberFormatException e) {
                         // Ignore invalid number format
                     }
@@ -195,7 +220,7 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
     /**
      * ViewHolder for timestamp items
      */
-    class TimestampViewHolder extends RecyclerView.ViewHolder {
+    public class TimestampViewHolder extends RecyclerView.ViewHolder {
         TextView textSegment;
         EditText editStartTime;
         EditText editEndTime;

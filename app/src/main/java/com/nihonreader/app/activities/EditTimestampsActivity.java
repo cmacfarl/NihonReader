@@ -7,6 +7,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -58,6 +60,11 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
     private StoryContent storyContent;
     private List<AudioSegment> originalSegments = new ArrayList<>();
     private boolean isModified = false;
+    
+    // Time capture variables
+    private boolean isCapturingTime = false;
+    private int captureSegmentPosition = -1;
+    private long captureStartTime = -1;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,16 +120,26 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
                 
                 // Make a deep copy of the segments to avoid modifying the original list
                 originalSegments.clear();
+                List<AudioSegment> segmentsCopy = new ArrayList<>();
                 for (AudioSegment segment : content.getSegments()) {
-                    originalSegments.add(new AudioSegment(
+                    AudioSegment copy = new AudioSegment(
                             segment.getStart(),
                             segment.getEnd(),
                             segment.getText()
-                    ));
+                    );
+                    originalSegments.add(copy);
+                    segmentsCopy.add(copy);
                 }
                 
                 // Initialize media player
                 initializeMediaPlayer(content.getAudioUri());
+                
+                // Initialize adapter with the copy of segments
+                if (adapter == null) {
+                    adapter = new TimestampAdapter(mediaPlayer, this);
+                    recyclerView.setAdapter(adapter);
+                }
+                adapter.setSegments(segmentsCopy);
             }
         });
         
@@ -189,11 +206,6 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
                 stopUpdatingSeekBar();
             });
             
-            // Now we can initialize the adapter
-            adapter = new TimestampAdapter(mediaPlayer, this);
-            recyclerView.setAdapter(adapter);
-            adapter.setSegments(originalSegments);
-            
             // Hide progress
             progressBar.setVisibility(View.GONE);
             
@@ -212,10 +224,64 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
             mediaPlayer.pause();
             buttonPlayPause.setImageResource(android.R.drawable.ic_media_play);
             stopUpdatingSeekBar();
+            
+            // If we're capturing time, this pause means we want to stop capturing and set the end time
+            if (isCapturingTime && captureSegmentPosition >= 0) {
+                long captureEndTime = mediaPlayer.getCurrentPosition();
+                completeTimeCapture(captureStartTime, captureEndTime);
+            }
         } else {
             mediaPlayer.start();
             buttonPlayPause.setImageResource(android.R.drawable.ic_media_pause);
             startUpdatingSeekBar();
+            
+            // If we're capturing time, this is the start time
+            if (isCapturingTime && captureStartTime < 0) {
+                captureStartTime = mediaPlayer.getCurrentPosition();
+            }
+        }
+    }
+    
+    /**
+     * Completes time capture process and updates segment times
+     */
+    private void completeTimeCapture(long startTime, long endTime) {
+        if (captureSegmentPosition >= 0 && adapter != null) {
+            // Update start and end times for the segment
+            adapter.updateSegmentStartTime(captureSegmentPosition, startTime);
+            adapter.updateSegmentEndTime(captureSegmentPosition, endTime);
+            
+            // Get the segment's view holder and update UI
+            RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(captureSegmentPosition);
+            if (viewHolder != null && viewHolder instanceof TimestampAdapter.TimestampViewHolder) {
+                Button playButton = viewHolder.itemView.findViewById(R.id.button_play_segment);
+                playButton.setText(R.string.play_segment);
+                
+                // Also update the EditText fields
+                EditText startEditText = viewHolder.itemView.findViewById(R.id.edit_start_time);
+                EditText endEditText = viewHolder.itemView.findViewById(R.id.edit_end_time);
+                
+                startEditText.setText(AudioUtils.formatTime(startTime));
+                endEditText.setText(AudioUtils.formatTime(endTime));
+            }
+            
+            // Auto-update next segment's start time
+            int nextPosition = captureSegmentPosition + 1;
+            if (nextPosition < adapter.getItemCount()) {
+                adapter.updateSegmentStartTime(nextPosition, endTime);
+                // Refresh the next item's UI
+                recyclerView.post(() -> adapter.notifyItemChanged(nextPosition));
+            }
+            
+            // Reset capture state
+            isCapturingTime = false;
+            captureSegmentPosition = -1;
+            captureStartTime = -1;
+            
+            // Mark as modified
+            isModified = true;
+            
+            Toast.makeText(this, R.string.capture_complete, Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -263,13 +329,25 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
     private void saveTimestamps() {
         if (storyContent != null && adapter != null) {
             List<AudioSegment> editedSegments = adapter.getSegments();
-            storyContent.setSegments(editedSegments);
+            
+            // Create a deep copy of edited segments to ensure they are properly saved
+            List<AudioSegment> segmentsToSave = new ArrayList<>();
+            for (AudioSegment segment : editedSegments) {
+                segmentsToSave.add(new AudioSegment(
+                        segment.getStart(),
+                        segment.getEnd(),
+                        segment.getText()
+                ));
+            }
+            
+            // Save the segments to the story content
+            storyContent.setSegments(segmentsToSave);
             viewModel.saveStoryContent(storyContent);
             
             Toast.makeText(this, R.string.timestamps_saved, Toast.LENGTH_SHORT).show();
             isModified = false;
             
-            // Optionally finish the activity
+            // Finish the activity
             finish();
         }
     }
@@ -336,5 +414,25 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
     @Override
     public void onPlaybackPositionChanged(long position) {
         // Nothing to do here, adapter already has access to MediaPlayer
+    }
+    
+    @Override
+    public void onBeginTimeCaptureForSegment(int position) {
+        // Set the current capture state
+        isCapturingTime = true;
+        captureSegmentPosition = position;
+        captureStartTime = -1; // Will be set when play starts
+        
+        // If media is already playing, record the current time as start time
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            captureStartTime = mediaPlayer.getCurrentPosition();
+        } else if (mediaPlayer != null) {
+            // If not playing, start playing now
+            mediaPlayer.seekTo(0); // Optionally seek to beginning or another appropriate position
+            togglePlayback();
+        }
+        
+        // Display a toast to inform the user
+        Toast.makeText(this, "Recording start/end times. Press pause when segment ends.", Toast.LENGTH_LONG).show();
     }
 }

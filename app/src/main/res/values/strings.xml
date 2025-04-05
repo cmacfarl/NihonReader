@@ -43,4 +43,7 @@
     <string name="start_time">Start Time</string>
     <string name="end_time">End Time</string>
     <string name="segment_text">Segment Text</string>
+    <string name="play_segment">Play Segment</string>
+    <string name="capturing">Capturing...</string>
+    <string name="capture_complete">Capture Complete</string>
 </resources>
