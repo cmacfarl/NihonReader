@@ -168,7 +168,7 @@ public class WordPopupFragment extends DialogFragment {
             
             // Set dictionary form
             String dictionaryForm = args.getString(ARG_DICTIONARY_FORM);
-            if (!TextUtils.isEmpty(dictionaryForm)) {
+            if (!TextUtils.isEmpty(dictionaryForm) && !dictionaryForm.equals(args.getString(ARG_WORD))) {
                 textDictionaryForm.setText("Dictionary form: " + dictionaryForm);
                 textDictionaryForm.setVisibility(View.VISIBLE);
             } else {

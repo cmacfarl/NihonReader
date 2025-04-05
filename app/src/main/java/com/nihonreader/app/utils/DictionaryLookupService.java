@@ -42,20 +42,19 @@ public class DictionaryLookupService {
     }
     
     /**
-     * Look up a word definition from the vocabulary database and KANJIDIC2
+     * Look up a word definition from the vocabulary database and KANJIDIC2, 
+     * always using the dictionary form (base form) when available
      */
     public void lookupWord(@NonNull JapaneseWord word, @NonNull OnWordDefinitionFoundListener listener) {
         executor.execute(() -> {
-            // First, try to find the word in its surface form in the database
-            VocabularyItem vocabularyItem = repository.getVocabularyByWord(word.getSurface());
-            
-            // If not found and the word has a base form that's different, try that
-            if (vocabularyItem == null && 
-                    word.getBaseForm() != null && 
-                    !word.getBaseForm().isEmpty() && 
-                    !word.getBaseForm().equals(word.getSurface())) {
-                vocabularyItem = repository.getVocabularyByWord(word.getBaseForm());
+            // Always prioritize the base form (dictionary form) if available
+            String lookupWord = word.getSurface();
+            if (word.getBaseForm() != null && !word.getBaseForm().isEmpty()) {
+                lookupWord = word.getBaseForm();
             }
+            
+            // Look up the word in the database
+            VocabularyItem vocabularyItem = repository.getVocabularyByWord(lookupWord);
             
             // If still not found, create a new vocabulary item
             if (vocabularyItem == null) {
@@ -85,12 +84,20 @@ public class DictionaryLookupService {
         String meaning = "No definition available";
         String reading = word.getReading();
         
+        // Determine which form to use for kanji lookup
+        String formForLookup = word.getSurface();
+        
+        // If the word has a base form, use that as the preferred lookup form
+        if (word.getBaseForm() != null && !word.getBaseForm().isEmpty()) {
+            formForLookup = word.getBaseForm();
+        }
+        
         // Check if the word contains any kanji that can be looked up
-        if (containsKanji(word.getSurface())) {
+        if (containsKanji(formForLookup)) {
             StringBuilder meaningBuilder = new StringBuilder();
             
             // Look up each kanji in the word
-            for (char c : word.getSurface().toCharArray()) {
+            for (char c : formForLookup.toCharArray()) {
                 String kanjiChar = String.valueOf(c);
                 
                 // Skip non-kanji characters
@@ -113,7 +120,14 @@ public class DictionaryLookupService {
             
             // Also, try to get a better reading if available
             if (TextUtils.isEmpty(reading)) {
-                reading = lookupReading(word.getSurface());
+                // Prefer to get reading from the dictionary form
+                if (word.getBaseForm() != null && !word.getBaseForm().isEmpty()) {
+                    reading = lookupReading(word.getBaseForm());
+                }
+                // Fallback to surface form if necessary
+                if (TextUtils.isEmpty(reading)) {
+                    reading = lookupReading(word.getSurface());
+                }
             }
         }
         
