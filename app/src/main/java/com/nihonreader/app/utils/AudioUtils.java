@@ -21,7 +21,8 @@ import java.util.regex.Pattern;
 public class AudioUtils {
     
     private static final String TAG = "AudioUtils";
-    private static final Pattern TIMING_PATTERN = Pattern.compile("\\[(\\d{2}):(\\d{2})\\.(\\d{2})\\]\\s*(.*)");
+    // Updated pattern to handle flexible digit counts and any text format (including hash symbols)
+    private static final Pattern TIMING_PATTERN = Pattern.compile("\\[(\\d{1,2}):(\\d{1,2})\\.(\\d{1,2})\\]\\s*(.*)");
     
     /**
      * Parse a file containing timestamps and corresponding text segments
@@ -37,17 +38,24 @@ public class AudioUtils {
             return segments;
         }
         
-        // Check if content is JSON
-        if (content.trim().startsWith("{") || content.trim().startsWith("[")) {
+        // First attempt to determine if content is JSON format
+        boolean isLikelyJson = isLikelyJsonFormat(content);
+        
+        if (isLikelyJson) {
             try {
-                return parseJsonTimingFile(content);
+                List<AudioSegment> jsonSegments = parseJsonTimingFile(content);
+                // If we successfully parsed JSON segments, return them
+                if (!jsonSegments.isEmpty()) {
+                    return jsonSegments;
+                }
+                // Otherwise fall through to text format parsing
             } catch (JsonSyntaxException e) {
                 Log.e(TAG, "Failed to parse JSON timing file", e);
                 // Fall back to text format parsing if JSON parsing fails
             }
         }
         
-        // If not JSON or JSON parsing failed, try parsing as text format
+        // Parse as text format
         String[] lines = content.split("\n");
         
         for (int i = 0; i < lines.length; i++) {
@@ -61,7 +69,9 @@ public class AudioUtils {
                 int minutes = Integer.parseInt(matcher.group(1));
                 int seconds = Integer.parseInt(matcher.group(2));
                 int centiseconds = Integer.parseInt(matcher.group(3));
-                long startTime = (minutes * 60 + seconds) * 1000 + centiseconds * 10;
+                // For single-digit centiseconds, multiply by 100 instead of 10
+                int multiplier = matcher.group(3).length() == 1 ? 100 : 10;
+                long startTime = (minutes * 60 + seconds) * 1000 + centiseconds * multiplier;
                 String text = matcher.group(4);
                 
                 // Calculate end time (start time of next segment or end of audio)
@@ -72,7 +82,9 @@ public class AudioUtils {
                         int nextMinutes = Integer.parseInt(nextMatcher.group(1));
                         int nextSeconds = Integer.parseInt(nextMatcher.group(2));
                         int nextCentiseconds = Integer.parseInt(nextMatcher.group(3));
-                        endTime = (nextMinutes * 60 + nextSeconds) * 1000 + nextCentiseconds * 10;
+                        // For single-digit centiseconds, multiply by 100 instead of 10
+                        int nextMultiplier = nextMatcher.group(3).length() == 1 ? 100 : 10;
+                        endTime = (nextMinutes * 60 + nextSeconds) * 1000 + nextCentiseconds * nextMultiplier;
                     } else {
                         endTime = startTime + 5000; // Default 5 seconds if can't determine
                     }
@@ -85,6 +97,70 @@ public class AudioUtils {
         }
         
         return segments;
+    }
+    
+    /**
+     * Determines if the content is likely to be in JSON format
+     * Uses more robust heuristics than just checking the first character
+     * @param content The content to analyze
+     * @return True if the content is likely JSON, false otherwise
+     */
+    private static boolean isLikelyJsonFormat(String content) {
+        // Trim whitespace
+        String trimmed = content.trim();
+        
+        // If it starts with a curly brace, it's likely JSON
+        if (trimmed.startsWith("{")) {
+            return true;
+        }
+        
+        // If it starts with a square bracket, we need additional checks
+        if (trimmed.startsWith("[")) {
+            // Check if the second character is a curly brace or another square bracket
+            // which would indicate a JSON array
+            if (trimmed.length() > 1 && (trimmed.charAt(1) == '{' || trimmed.charAt(1) == '[')) {
+                return true;
+            }
+            
+            // Check if the content contains JSON-like structures
+            boolean containsJsonStructures = 
+                trimmed.contains("\"start\"") ||
+                trimmed.contains("\"text\"") || 
+                trimmed.contains("\"end\"");
+            
+            if (containsJsonStructures) {
+                return true;
+            }
+
+            // If first line starts with [xx:xx.xx] pattern, it's likely text format
+            String firstLine = trimmed.split("\\n")[0].trim();
+            if (TIMING_PATTERN.matcher(firstLine).matches()) {
+                return false;
+            }
+
+            // Check for numeric arrays which could be timestamps in JSON
+            if (trimmed.matches("\\[\\s*\\d+.*")) {
+                return true;
+            }
+        }
+        
+        // Try to parse a sample of the content as JSON
+        try {
+            // Get a small sample (first 100 chars or less) to avoid performance issues with large files
+            String sample = trimmed.substring(0, Math.min(trimmed.length(), 100));
+            JsonParser.parseString(sample);
+            return true;
+        } catch (JsonSyntaxException e) {
+            // If parsing fails, check some additional JSON indicators
+            boolean hasJsonIndicators = 
+                trimmed.contains("\"segments\"") || 
+                trimmed.contains("\"startTime\"") || 
+                trimmed.contains("\"endTime\"") || 
+                (trimmed.contains("{") && trimmed.contains("}")) || 
+                (trimmed.contains("[") && trimmed.contains("]"));
+            
+            return hasJsonIndicators;
+        }
     }
     
     /**
@@ -224,13 +300,15 @@ public class AudioUtils {
             } else if (element.getAsJsonPrimitive().isString()) {
                 String timeStr = element.getAsString();
                 
-                // Try to parse as MM:SS.SS format
+                // Try to parse as MM:SS.SS format (with flexible digit count)
                 Matcher matcher = TIMING_PATTERN.matcher("[" + timeStr + "] dummy");
                 if (matcher.matches()) {
                     int minutes = Integer.parseInt(matcher.group(1));
                     int seconds = Integer.parseInt(matcher.group(2));
                     int centiseconds = Integer.parseInt(matcher.group(3));
-                    return (minutes * 60 + seconds) * 1000 + centiseconds * 10;
+                    // For single-digit centiseconds, multiply by 100 instead of 10
+                    int multiplier = matcher.group(3).length() == 1 ? 100 : 10;
+                    return (minutes * 60 + seconds) * 1000 + centiseconds * multiplier;
                 }
                 
                 // Try to parse as seconds with decimal

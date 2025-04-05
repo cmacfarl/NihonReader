@@ -1,5 +1,6 @@
 package com.nihonreader.app.adapters;
 
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -55,6 +56,13 @@ public class StoryAdapter extends RecyclerView.Adapter<StoryAdapter.StoryViewHol
         return stories.size();
     }
     
+    public Story getStoryAt(int position) {
+        if (position >= 0 && position < stories.size()) {
+            return stories.get(position);
+        }
+        return null;
+    }
+    
     public void setStories(List<Story> stories) {
         final DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
             @Override
@@ -89,7 +97,7 @@ public class StoryAdapter extends RecyclerView.Adapter<StoryAdapter.StoryViewHol
         result.dispatchUpdatesTo(this);
     }
     
-    class StoryViewHolder extends RecyclerView.ViewHolder {
+    class StoryViewHolder extends RecyclerView.ViewHolder implements View.OnCreateContextMenuListener {
         private TextView textViewTitle;
         private TextView textViewAuthor;
         private TextView textViewDescription;
@@ -102,16 +110,30 @@ public class StoryAdapter extends RecyclerView.Adapter<StoryAdapter.StoryViewHol
             textViewDescription = itemView.findViewById(R.id.text_view_description);
             chipCustom = itemView.findViewById(R.id.chip_custom);
             
+            // Set click listener
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (listener != null && position != RecyclerView.NO_POSITION) {
                     listener.onStoryClick(stories.get(position));
                 }
             });
+            
+            // Set as context menu creator
+            itemView.setOnCreateContextMenuListener(this);
+        }
+        
+        @Override
+        public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+            int position = getAdapterPosition();
+            if (position != RecyclerView.NO_POSITION) {
+                menu.setHeaderTitle(textViewTitle.getText());
+                menu.add(position, R.id.action_delete, 0, R.string.delete);
+            }
         }
     }
     
     public interface OnStoryClickListener {
         void onStoryClick(Story story);
     }
+    
 }

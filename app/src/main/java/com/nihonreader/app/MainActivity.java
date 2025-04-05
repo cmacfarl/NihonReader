@@ -2,10 +2,15 @@ package com.nihonreader.app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.ContextMenu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
@@ -53,6 +58,9 @@ public class MainActivity extends AppCompatActivity implements StoryAdapter.OnSt
         adapter = new StoryAdapter(this);
         recyclerView.setAdapter(adapter);
         
+        // Register the RecyclerView for context menu
+        registerForContextMenu(recyclerView);
+        
         // Setup view model
         viewModel = new ViewModelProvider(this).get(StoryListViewModel.class);
         viewModel.getAllStories().observe(this, stories -> {
@@ -88,5 +96,37 @@ public class MainActivity extends AppCompatActivity implements StoryAdapter.OnSt
         Intent intent = new Intent(MainActivity.this, StoryReaderActivity.class);
         intent.putExtra(StoryReaderActivity.EXTRA_STORY_ID, story.getId());
         startActivity(intent);
+    }
+    
+    
+    @Override
+    public boolean onContextItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_delete) {
+            try {
+                // item.getGroupId() contains the position of the selected item
+                int position = item.getGroupId();
+                Story storyToDelete = adapter.getStoryAt(position);
+                if (storyToDelete != null) {
+                    showDeleteConfirmationDialog(storyToDelete);
+                    return true;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return super.onContextItemSelected(item);
+    }
+    
+    private void showDeleteConfirmationDialog(Story story) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.delete_story)
+                .setMessage(R.string.delete_confirmation)
+                .setPositiveButton(R.string.confirm, (dialog, which) -> {
+                    // Delete the story
+                    viewModel.delete(story);
+                    Toast.makeText(MainActivity.this, R.string.story_deleted, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 }
