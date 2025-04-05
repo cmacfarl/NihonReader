@@ -1,11 +1,13 @@
 package com.nihonreader.app.views;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.method.LinkMovementMethod;
+import android.text.style.BackgroundColorSpan;
 import android.text.style.ClickableSpan;
 import android.util.AttributeSet;
 import android.view.View;
@@ -21,13 +23,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Custom TextView that supports Japanese word parsing and click handling
+ * Custom TextView that supports Japanese word parsing and click handling with highlighting
  */
 public class JapaneseTextView extends AppCompatTextView {
     
     private String originalText;
     private List<JapaneseWord> parsedWords = new ArrayList<>();
     private OnWordClickListener onWordClickListener;
+    private SpannableStringBuilder spannableBuilder;
+    private JapaneseWord highlightedWord;
+    private BackgroundColorSpan currentHighlightSpan;
+    
+    // Colors for highlighting
+    private int highlightColor;
     
     public interface OnWordClickListener {
         void onWordClicked(JapaneseWord word);
@@ -51,6 +59,8 @@ public class JapaneseTextView extends AppCompatTextView {
     private void init() {
         // Enable click handling on text
         setMovementMethod(LinkMovementMethod.getInstance());
+        // Get highlight color from resources
+        highlightColor = getContext().getResources().getColor(com.nihonreader.app.R.color.wordHighlight);
     }
     
     public void setOnWordClickListener(OnWordClickListener listener) {
@@ -76,7 +86,7 @@ public class JapaneseTextView extends AppCompatTextView {
             return;
         }
         
-        SpannableStringBuilder builder = new SpannableStringBuilder(originalText);
+        spannableBuilder = new SpannableStringBuilder(originalText);
         
         for (JapaneseWord word : parsedWords) {
             if (word.isClickable()) {
@@ -85,6 +95,7 @@ public class JapaneseTextView extends AppCompatTextView {
                 ClickableSpan clickableSpan = new ClickableSpan() {
                     @Override
                     public void onClick(@NonNull View widget) {
+                        highlightWord(clickedWord);
                         if (onWordClickListener != null) {
                             onWordClickListener.onWordClicked(clickedWord);
                         }
@@ -97,7 +108,7 @@ public class JapaneseTextView extends AppCompatTextView {
                     }
                 };
                 
-                builder.setSpan(
+                spannableBuilder.setSpan(
                         clickableSpan,
                         word.getStartIndex(),
                         word.getEndIndex(),
@@ -106,7 +117,40 @@ public class JapaneseTextView extends AppCompatTextView {
             }
         }
         
-        setText(builder);
+        setText(spannableBuilder);
+    }
+    
+    /**
+     * Highlight a word by applying a background color
+     */
+    public void highlightWord(JapaneseWord word) {
+        // Remove previous highlight if any
+        removeHighlight();
+        
+        // Add new highlight
+        highlightedWord = word;
+        currentHighlightSpan = new BackgroundColorSpan(highlightColor);
+        
+        spannableBuilder.setSpan(
+                currentHighlightSpan,
+                word.getStartIndex(),
+                word.getEndIndex(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        );
+        
+        setText(spannableBuilder);
+    }
+    
+    /**
+     * Remove the current highlight
+     */
+    public void removeHighlight() {
+        if (spannableBuilder != null && currentHighlightSpan != null && highlightedWord != null) {
+            spannableBuilder.removeSpan(currentHighlightSpan);
+            setText(spannableBuilder);
+            highlightedWord = null;
+            currentHighlightSpan = null;
+        }
     }
     
     /**

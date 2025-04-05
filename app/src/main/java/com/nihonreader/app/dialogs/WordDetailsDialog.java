@@ -3,6 +3,7 @@ package com.nihonreader.app.dialogs;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.Window;
 import android.widget.TextView;
@@ -12,9 +13,10 @@ import androidx.annotation.NonNull;
 import com.nihonreader.app.R;
 import com.nihonreader.app.models.JapaneseWord;
 import com.nihonreader.app.models.VocabularyItem;
+import com.nihonreader.app.utils.KanjiDictionary;
 
 /**
- * Dialog for displaying details of a Japanese word
+ * Dialog for displaying details of a Japanese word with KANJIDIC2 information
  */
 public class WordDetailsDialog extends Dialog {
     
@@ -45,12 +47,17 @@ public class WordDetailsDialog extends Dialog {
         TextView textDictionaryForm = findViewById(R.id.text_dictionary_form);
         TextView textDictionaryFormLabel = findViewById(R.id.text_dictionary_form_label);
         TextView textMeaning = findViewById(R.id.text_meaning);
+        TextView textStrokeCountLabel = findViewById(R.id.text_stroke_count_label);
+        TextView textStrokeCount = findViewById(R.id.text_stroke_count);
         
         // Set word details from Kuromoji parsing
         textWord.setText(japaneseWord.getSurface());
         
         // Set reading if available
-        if (japaneseWord.getReading() != null && !japaneseWord.getReading().isEmpty() && 
+        if (vocabularyItem != null && vocabularyItem.getReading() != null && !vocabularyItem.getReading().isEmpty()) {
+            textReading.setText(vocabularyItem.getReading());
+            textReading.setVisibility(View.VISIBLE);
+        } else if (japaneseWord.getReading() != null && !japaneseWord.getReading().isEmpty() && 
             !japaneseWord.getReading().equals(japaneseWord.getSurface())) {
             textReading.setText(japaneseWord.getReading());
             textReading.setVisibility(View.VISIBLE);
@@ -62,9 +69,18 @@ public class WordDetailsDialog extends Dialog {
         textPos.setText(japaneseWord.getPartOfSpeech());
         
         // Set dictionary form if different from surface form
-        if (japaneseWord.getBaseForm() != null && !japaneseWord.getBaseForm().isEmpty() && 
+        String dictionaryForm = null;
+        if (vocabularyItem != null && vocabularyItem.getDictionaryForm() != null && 
+            !vocabularyItem.getDictionaryForm().isEmpty() && 
+            !vocabularyItem.getDictionaryForm().equals(japaneseWord.getSurface())) {
+            dictionaryForm = vocabularyItem.getDictionaryForm();
+        } else if (japaneseWord.getBaseForm() != null && !japaneseWord.getBaseForm().isEmpty() && 
             !japaneseWord.getBaseForm().equals(japaneseWord.getSurface())) {
-            textDictionaryForm.setText(japaneseWord.getBaseForm());
+            dictionaryForm = japaneseWord.getBaseForm();
+        }
+        
+        if (dictionaryForm != null) {
+            textDictionaryForm.setText(dictionaryForm);
             textDictionaryFormLabel.setVisibility(View.VISIBLE);
             textDictionaryForm.setVisibility(View.VISIBLE);
         } else {
@@ -89,5 +105,35 @@ public class WordDetailsDialog extends Dialog {
         }
         
         textMeaning.setText(meaning);
+        
+        // Check if the word contains a single kanji character for stroke count display
+        if (isKanji(japaneseWord.getSurface()) && japaneseWord.getSurface().length() == 1) {
+            KanjiDictionary kanjiDictionary = KanjiDictionary.getInstance(getContext());
+            KanjiDictionary.KanjiEntry kanjiEntry = kanjiDictionary.lookupKanji(japaneseWord.getSurface());
+            
+            if (kanjiEntry != null && kanjiEntry.getStrokeCount() != null) {
+                textStrokeCount.setText(kanjiEntry.getStrokeCount());
+                textStrokeCountLabel.setVisibility(View.VISIBLE);
+                textStrokeCount.setVisibility(View.VISIBLE);
+            } else {
+                textStrokeCountLabel.setVisibility(View.GONE);
+                textStrokeCount.setVisibility(View.GONE);
+            }
+        } else {
+            textStrokeCountLabel.setVisibility(View.GONE);
+            textStrokeCount.setVisibility(View.GONE);
+        }
+    }
+    
+    /**
+     * Check if a string is a single kanji character
+     */
+    private boolean isKanji(String text) {
+        if (TextUtils.isEmpty(text) || text.length() != 1) {
+            return false;
+        }
+        
+        char c = text.charAt(0);
+        return Character.UnicodeBlock.of(c) == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS;
     }
 }
