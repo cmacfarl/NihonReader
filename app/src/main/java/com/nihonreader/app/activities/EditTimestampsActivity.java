@@ -247,30 +247,46 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
      */
     private void completeTimeCapture(long startTime, long endTime) {
         if (captureSegmentPosition >= 0 && adapter != null) {
-            // Update start and end times for the segment
-            adapter.updateSegmentStartTime(captureSegmentPosition, startTime);
-            adapter.updateSegmentEndTime(captureSegmentPosition, endTime);
+            // Get the segments directly from the adapter
+            List<AudioSegment> segments = adapter.getSegments();
             
-            // Get the segment's view holder and update UI
-            RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(captureSegmentPosition);
-            if (viewHolder != null && viewHolder instanceof TimestampAdapter.TimestampViewHolder) {
-                Button playButton = viewHolder.itemView.findViewById(R.id.button_play_segment);
-                playButton.setText(R.string.play_segment);
+            if (captureSegmentPosition < segments.size()) {
+                // Get the current segment directly
+                AudioSegment segment = segments.get(captureSegmentPosition);
                 
-                // Also update the EditText fields
-                EditText startEditText = viewHolder.itemView.findViewById(R.id.edit_start_time);
-                EditText endEditText = viewHolder.itemView.findViewById(R.id.edit_end_time);
+                // Update segment times directly in the model
+                segment.setStart(startTime);
+                segment.setEnd(endTime);
                 
-                startEditText.setText(AudioUtils.formatTime(startTime));
-                endEditText.setText(AudioUtils.formatTime(endTime));
-            }
-            
-            // Auto-update next segment's start time
-            int nextPosition = captureSegmentPosition + 1;
-            if (nextPosition < adapter.getItemCount()) {
-                adapter.updateSegmentStartTime(nextPosition, endTime);
-                // Refresh the next item's UI
-                recyclerView.post(() -> adapter.notifyItemChanged(nextPosition));
+                // Get the segment's view holder and update UI
+                RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(captureSegmentPosition);
+                if (viewHolder != null && viewHolder instanceof TimestampAdapter.TimestampViewHolder) {
+                    TimestampAdapter.TimestampViewHolder holder = (TimestampAdapter.TimestampViewHolder) viewHolder;
+                    
+                    // Reset button text
+                    holder.buttonPlaySegment.setText(R.string.play_segment);
+                    
+                    // Update the EditText fields
+                    holder.editStartTime.setText(AudioUtils.formatTime(startTime));
+                    holder.editEndTime.setText(AudioUtils.formatTime(endTime));
+                    
+                    // Make sure the segment reference is correct
+                    holder.segment = segment;
+                }
+                
+                // Auto-update next segment's start time
+                int nextPosition = captureSegmentPosition + 1;
+                if (nextPosition < segments.size()) {
+                    // Update the next segment directly
+                    AudioSegment nextSegment = segments.get(nextPosition);
+                    nextSegment.setStart(endTime);
+                    
+                    // Update the UI for the next segment
+                    recyclerView.post(() -> adapter.notifyItemChanged(nextPosition));
+                }
+                
+                // Also update the adapter UI
+                adapter.notifyItemChanged(captureSegmentPosition);
             }
             
             // Reset capture state
@@ -403,8 +419,11 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
     @Override
     public void onPlaySegment(int position, long startTime, long endTime) {
         if (mediaPlayer != null) {
+            // Seek to the segment's start time
             mediaPlayer.seekTo((int) startTime);
             updateSeekBarProgress();
+            
+            // Start playback if not already playing
             if (!mediaPlayer.isPlaying()) {
                 togglePlayback();
             }
@@ -423,13 +442,25 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
         captureSegmentPosition = position;
         captureStartTime = -1; // Will be set when play starts
         
-        // If media is already playing, record the current time as start time
-        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-            captureStartTime = mediaPlayer.getCurrentPosition();
-        } else if (mediaPlayer != null) {
-            // If not playing, start playing now
-            mediaPlayer.seekTo(0); // Optionally seek to beginning or another appropriate position
-            togglePlayback();
+        // Get the segment that we're capturing
+        if (adapter != null && position >= 0 && position < adapter.getItemCount()) {
+            AudioSegment segment = adapter.getSegments().get(position);
+            
+            // If not playing or if currently at a different position, seek to this segment's start time
+            if (mediaPlayer != null) {
+                // Seek to the current segment's start time
+                long startPos = segment.getStart();
+                mediaPlayer.seekTo((int)startPos);
+                updateSeekBarProgress();
+                
+                // If already playing, record the current time as start time
+                if (mediaPlayer.isPlaying()) {
+                    captureStartTime = mediaPlayer.getCurrentPosition();
+                } else {
+                    // If not playing, start playing now
+                    togglePlayback();
+                }
+            }
         }
         
         // Display a toast to inform the user

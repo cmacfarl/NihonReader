@@ -56,6 +56,10 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
     public void onBindViewHolder(@NonNull TimestampViewHolder holder, int position) {
         AudioSegment segment = segments.get(position);
         
+        // Store segment and position for use in listeners
+        holder.segment = segment;
+        holder.position = position;
+        
         // Set segment text
         holder.textSegment.setText(segment.getText());
         
@@ -64,9 +68,6 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
         
         // Set end time in mm:ss format
         holder.editEndTime.setText(AudioUtils.formatTime(segment.getEnd()));
-        
-        // Store position for use in listeners
-        holder.position = position;
         
         // Set up text watchers to update values when edited
         setupStartTimeWatcher(holder);
@@ -80,6 +81,11 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
                 
                 // Change button text to indicate it's in capture mode
                 holder.buttonPlaySegment.setText(R.string.capturing);
+                
+                // Start playback from the segment's current start time
+                if (holder.segment != null) {
+                    listener.onPlaySegment(position, holder.segment.getStart(), holder.segment.getEnd());
+                }
             }
         });
         
@@ -88,6 +94,8 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
             if (mediaPlayer != null && listener != null) {
                 long currentPosition = mediaPlayer.getCurrentPosition();
                 holder.editStartTime.setText(AudioUtils.formatTime(currentPosition));
+                // Update segment directly
+                holder.segment.setStart(currentPosition);
                 listener.onStartTimeSet(position, currentPosition);
             }
         });
@@ -97,6 +105,8 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
             if (mediaPlayer != null && listener != null) {
                 long currentPosition = mediaPlayer.getCurrentPosition();
                 holder.editEndTime.setText(AudioUtils.formatTime(currentPosition));
+                // Update segment directly
+                holder.segment.setEnd(currentPosition);
                 listener.onEndTimeSet(position, currentPosition);
                 
                 // Auto-update the start time of the next segment if available
@@ -132,6 +142,8 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
                 if (s.length() > 0 && listener != null) {
                     try {
                         long time = AudioUtils.parseTimeString(s.toString());
+                        // Update the segment directly
+                        holder.segment.setStart(time);
                         listener.onStartTimeSet(holder.position, time);
                     } catch (NumberFormatException e) {
                         // Ignore invalid number format
@@ -165,7 +177,8 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
                 if (s.length() > 0 && listener != null) {
                     try {
                         long time = AudioUtils.parseTimeString(s.toString());
-                        // Update current segment's end time
+                        // Update current segment's end time directly
+                        holder.segment.setEnd(time);
                         listener.onEndTimeSet(holder.position, time);
                         
                         // Auto-update the start time of the next segment if available
@@ -221,15 +234,16 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
      * ViewHolder for timestamp items
      */
     public class TimestampViewHolder extends RecyclerView.ViewHolder {
-        TextView textSegment;
-        EditText editStartTime;
-        EditText editEndTime;
+        public TextView textSegment;
+        public EditText editStartTime;
+        public EditText editEndTime;
         ImageButton buttonSetStart;
         ImageButton buttonSetEnd;
-        Button buttonPlaySegment;
+        public Button buttonPlaySegment;
         int position;
         TextWatcher startTimeWatcher;
         TextWatcher endTimeWatcher;
+        public AudioSegment segment; // Store reference to the segment this ViewHolder represents
         
         TimestampViewHolder(@NonNull View itemView) {
             super(itemView);
