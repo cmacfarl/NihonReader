@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.nihonreader.app.activities.AddStoryActivity;
+import com.nihonreader.app.activities.EditTimestampsActivity;
 import com.nihonreader.app.activities.StoryReaderActivity;
 import com.nihonreader.app.adapters.StoryAdapter;
 import com.nihonreader.app.models.Story;
@@ -101,18 +102,25 @@ public class MainActivity extends AppCompatActivity implements StoryAdapter.OnSt
     
     @Override
     public boolean onContextItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == R.id.action_delete) {
-            try {
-                // item.getGroupId() contains the position of the selected item
-                int position = item.getGroupId();
-                Story storyToDelete = adapter.getStoryAt(position);
-                if (storyToDelete != null) {
-                    showDeleteConfirmationDialog(storyToDelete);
+        try {
+            // item.getGroupId() contains the position of the selected item
+            int position = item.getGroupId();
+            Story selectedStory = adapter.getStoryAt(position);
+            
+            if (selectedStory != null) {
+                if (item.getItemId() == R.id.action_edit_timestamps) {
+                    // Launch the EditTimestampsActivity
+                    Intent intent = new Intent(MainActivity.this, EditTimestampsActivity.class);
+                    intent.putExtra(EditTimestampsActivity.EXTRA_STORY_ID, selectedStory.getId());
+                    startActivity(intent);
+                    return true;
+                } else if (item.getItemId() == R.id.action_delete) {
+                    showDeleteConfirmationDialog(selectedStory);
                     return true;
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return super.onContextItemSelected(item);
     }
