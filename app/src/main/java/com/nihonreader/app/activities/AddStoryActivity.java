@@ -5,6 +5,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
@@ -24,9 +25,15 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.textfield.TextInputEditText;
 import com.nihonreader.app.R;
 import com.nihonreader.app.utils.FileUtils;
+import com.nihonreader.app.utils.JapaneseTextUtils;
 import com.nihonreader.app.viewmodels.AddStoryViewModel;
+import com.nihonreader.app.repository.StoryRepository;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.List;
 
 /**
  * Activity for adding new custom stories
@@ -35,7 +42,6 @@ public class AddStoryActivity extends AppCompatActivity {
     
     private static final int REQUEST_PICK_TEXT = 1;
     private static final int REQUEST_PICK_AUDIO = 2;
-    private static final int REQUEST_PICK_TIMING = 3;
     
     private AddStoryViewModel viewModel;
     
@@ -45,19 +51,15 @@ public class AddStoryActivity extends AppCompatActivity {
     
     private Button buttonSelectText;
     private Button buttonSelectAudio;
-    private Button buttonSelectTiming;
     private Button buttonChangeText;
     private Button buttonChangeAudio;
-    private Button buttonChangeTiming;
     private Button buttonImport;
     
     private LinearLayout textPreviewContainer;
     private LinearLayout audioPreviewContainer;
-    private LinearLayout timingPreviewContainer;
     
     private TextView textViewTextFileName;
     private TextView textViewAudioFileName;
-    private TextView textViewTimingFileName;
     
     private ProgressBar progressBar;
     private TextView textViewStatus;
@@ -93,19 +95,15 @@ public class AddStoryActivity extends AppCompatActivity {
         
         buttonSelectText = findViewById(R.id.button_select_text);
         buttonSelectAudio = findViewById(R.id.button_select_audio);
-        buttonSelectTiming = findViewById(R.id.button_select_timing);
         buttonChangeText = findViewById(R.id.button_change_text);
         buttonChangeAudio = findViewById(R.id.button_change_audio);
-        buttonChangeTiming = findViewById(R.id.button_change_timing);
         buttonImport = findViewById(R.id.button_import);
         
         textPreviewContainer = findViewById(R.id.text_preview_container);
         audioPreviewContainer = findViewById(R.id.audio_preview_container);
-        timingPreviewContainer = findViewById(R.id.timing_preview_container);
         
         textViewTextFileName = findViewById(R.id.text_view_text_file_name);
         textViewAudioFileName = findViewById(R.id.text_view_audio_file_name);
-        textViewTimingFileName = findViewById(R.id.text_view_timing_file_name);
         
         progressBar = findViewById(R.id.progress_bar);
         textViewStatus = findViewById(R.id.text_view_status);
@@ -113,92 +111,56 @@ public class AddStoryActivity extends AppCompatActivity {
     }
     
     private void setupObservers() {
-        // Observe title
         viewModel.getTitle().observe(this, title -> {
-            if (!title.equals(editTextTitle.getText().toString())) {
+            if (title != null) {
                 editTextTitle.setText(title);
             }
         });
-        
-        // Observe author
+
         viewModel.getAuthor().observe(this, author -> {
-            if (!author.equals(editTextAuthor.getText().toString())) {
+            if (author != null) {
                 editTextAuthor.setText(author);
             }
         });
-        
-        // Observe description
+
         viewModel.getDescription().observe(this, description -> {
-            if (!description.equals(editTextDescription.getText().toString())) {
+            if (description != null) {
                 editTextDescription.setText(description);
             }
         });
-        
-        // Observe text file name
+
         viewModel.getTextFileName().observe(this, fileName -> {
             if (fileName != null && !fileName.isEmpty()) {
                 textViewTextFileName.setText(fileName);
                 buttonSelectText.setVisibility(View.GONE);
+                buttonChangeText.setVisibility(View.VISIBLE);
                 textPreviewContainer.setVisibility(View.VISIBLE);
             } else {
+                textViewTextFileName.setText(R.string.no_file_selected);
                 buttonSelectText.setVisibility(View.VISIBLE);
+                buttonChangeText.setVisibility(View.GONE);
                 textPreviewContainer.setVisibility(View.GONE);
             }
         });
-        
-        // Observe audio file name
+
         viewModel.getAudioFileName().observe(this, fileName -> {
             if (fileName != null && !fileName.isEmpty()) {
                 textViewAudioFileName.setText(fileName);
                 buttonSelectAudio.setVisibility(View.GONE);
+                buttonChangeAudio.setVisibility(View.VISIBLE);
                 audioPreviewContainer.setVisibility(View.VISIBLE);
             } else {
+                textViewAudioFileName.setText(R.string.no_file_selected);
                 buttonSelectAudio.setVisibility(View.VISIBLE);
+                buttonChangeAudio.setVisibility(View.GONE);
                 audioPreviewContainer.setVisibility(View.GONE);
             }
         });
-        
-        // Observe timing file name
-        viewModel.getTimingFileName().observe(this, fileName -> {
-            if (fileName != null && !fileName.isEmpty()) {
-                textViewTimingFileName.setText(fileName);
-                buttonSelectTiming.setVisibility(View.GONE);
-                timingPreviewContainer.setVisibility(View.VISIBLE);
-            } else {
-                buttonSelectTiming.setVisibility(View.VISIBLE);
-                timingPreviewContainer.setVisibility(View.GONE);
-            }
-        });
-        
-        // Observe importing state
-        viewModel.getIsImporting().observe(this, isImporting -> {
-            progressBar.setVisibility(isImporting ? View.VISIBLE : View.GONE);
-            textViewStatus.setVisibility(isImporting ? View.VISIBLE : View.GONE);
-            buttonImport.setEnabled(!isImporting);
-        });
-        
-        // Observe import result
-        viewModel.getImportResult().observe(this, result -> {
-            if (result != null) {
-                if (result.startsWith("success")) {
-                    Toast.makeText(this, R.string.import_success, Toast.LENGTH_SHORT).show();
-                    finish();
-                } else if (result.startsWith("error")) {
-                    Toast.makeText(this, R.string.error_import, Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-        
-        // Observe import status
-        viewModel.getImportStatus().observe(this, status -> {
-            if (status != null && !status.isEmpty()) {
-                textViewStatus.setText(status);
-            }
-        });
-        
-        // Observe AI alignment setting
+
         viewModel.getUseAiAlignment().observe(this, useAi -> {
-            checkboxUseAi.setChecked(useAi != null && useAi);
+            if (useAi != null) {
+                checkboxUseAi.setChecked(useAi);
+            }
         });
     }
     
@@ -228,7 +190,7 @@ public class AddStoryActivity extends AppCompatActivity {
         buttonSelectText.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("text/*");
+            intent.setType("text/plain");
             startActivityForResult(intent, REQUEST_PICK_TEXT);
         });
         
@@ -236,7 +198,7 @@ public class AddStoryActivity extends AppCompatActivity {
         buttonChangeText.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("text/*");
+            intent.setType("text/plain");
             startActivityForResult(intent, REQUEST_PICK_TEXT);
         });
         
@@ -256,115 +218,93 @@ public class AddStoryActivity extends AppCompatActivity {
             startActivityForResult(intent, REQUEST_PICK_AUDIO);
         });
         
-        // Select timing file button
-        buttonSelectTiming.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("text/*");
-            startActivityForResult(intent, REQUEST_PICK_TIMING);
-        });
-        
-        // Change timing file button
-        buttonChangeTiming.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("text/*");
-            startActivityForResult(intent, REQUEST_PICK_TIMING);
+        // Import button
+        buttonImport.setOnClickListener(v -> {
+            if (viewModel.validateInputs()) {
+                viewModel.importStory(new StoryRepository.ImportStoryCallback() {
+                    @Override
+                    public void onSuccess(String storyId) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(AddStoryActivity.this, R.string.import_success, Toast.LENGTH_SHORT).show();
+                            // Launch EditTimestampsActivity with the generated story ID
+                            Intent intent = new Intent(AddStoryActivity.this, EditTimestampsActivity.class);
+                            intent.putExtra(EditTimestampsActivity.EXTRA_STORY_ID, storyId);
+                            startActivity(intent);
+                            finish();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(AddStoryActivity.this, error, Toast.LENGTH_LONG).show();
+                        });
+                    }
+
+                    @Override
+                    public void onProgressUpdate(String message) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(AddStoryActivity.this, message, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
+            } else {
+                Toast.makeText(this, R.string.please_fill_required_fields, Toast.LENGTH_SHORT).show();
+            }
         });
         
         // AI checkbox
         checkboxUseAi.setOnCheckedChangeListener((buttonView, isChecked) -> {
             viewModel.setUseAiAlignment(isChecked);
         });
-        
-        // Import button
-        buttonImport.setOnClickListener(v -> {
-            if (validateInputs()) {
-                viewModel.importStory();
-            }
-        });
-    }
-    
-    private boolean validateInputs() {
-        // Validate title
-        if (editTextTitle.getText().toString().trim().isEmpty()) {
-            editTextTitle.setError("Title is required");
-            editTextTitle.requestFocus();
-            return false;
-        }
-        
-        // Validate author
-        if (editTextAuthor.getText().toString().trim().isEmpty()) {
-            editTextAuthor.setError("Author is required");
-            editTextAuthor.requestFocus();
-            return false;
-        }
-        
-        // Validate text file
-        if (viewModel.getTextFileUri().getValue() == null) {
-            Toast.makeText(this, "Please select a text file", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        
-        // Validate audio file
-        if (viewModel.getAudioFileUri().getValue() == null) {
-            Toast.makeText(this, "Please select an audio file", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        
-        return true;
     }
     
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         
-        if (resultCode == RESULT_OK && data != null) {
+        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData();
-            if (uri != null) {
-                // Get file name from uri
-                String fileName = getFileNameFromUri(uri);
-                
-                // Handle different request types
-                switch (requestCode) {
-                    case REQUEST_PICK_TEXT:
-                        try {
-                            String textContent = FileUtils.readTextFromUri(this, uri);
-                            viewModel.setTextContent(textContent);
-                            viewModel.setTextFileUri(uri);
-                            viewModel.setTextFileName(fileName);
-                            
-                            // Auto-set title from file name if not set
-                            if (editTextTitle.getText().toString().trim().isEmpty()) {
-                                String titleFromFile = fileName;
-                                if (titleFromFile.lastIndexOf('.') > 0) {
-                                    titleFromFile = titleFromFile.substring(0, titleFromFile.lastIndexOf('.'));
-                                }
-                                viewModel.setTitle(titleFromFile);
-                            }
-                        } catch (IOException e) {
-                            Toast.makeText(this, "Error reading text file", Toast.LENGTH_SHORT).show();
-                        }
-                        break;
+            
+            String fileName = getFileNameFromUri(uri);
+            
+            switch (requestCode) {
+                case REQUEST_PICK_TEXT:
+                    viewModel.setTextFileUri(uri);
+                    viewModel.setTextFileName(fileName);
+                    // Read the text file content
+                    try {
+                        String content = readTextFile(uri);
+                        viewModel.setTextContent(content);
+                    } catch (IOException e) {
+                        Toast.makeText(this, R.string.error_reading_file, Toast.LENGTH_SHORT).show();
+                    }
+                    break;
                     
-                    case REQUEST_PICK_AUDIO:
-                        viewModel.setAudioFileUri(uri);
-                        viewModel.setAudioFileName(fileName);
-                        break;
-                    
-                    case REQUEST_PICK_TIMING:
-                        viewModel.setTimingFileUri(uri);
-                        viewModel.setTimingFileName(fileName);
-                        break;
-                }
+                case REQUEST_PICK_AUDIO:
+                    viewModel.setAudioFileUri(uri);
+                    viewModel.setAudioFileName(fileName);
+                    break;
             }
         }
+    }
+    
+    private String readTextFile(Uri uri) throws IOException {
+        StringBuilder content = new StringBuilder();
+        try (InputStream inputStream = getContentResolver().openInputStream(uri);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+        }
+        return content.toString();
     }
     
     private String getFileNameFromUri(Uri uri) {
         String result = null;
         
-        if (uri.getScheme().equals("content")) {
+        if (uri.getScheme() != null && uri.getScheme().equals("content")) {
             try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
                 if (cursor != null && cursor.moveToFirst()) {
                     int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
@@ -372,14 +312,25 @@ public class AddStoryActivity extends AppCompatActivity {
                         result = cursor.getString(nameIndex);
                     }
                 }
+            } catch (Exception e) {
+                // Fall back to path-based name extraction
             }
         }
         
         if (result == null) {
-            result = uri.getPath();
-            int cut = result.lastIndexOf('/');
-            if (cut != -1) {
-                result = result.substring(cut + 1);
+            result = uri.getLastPathSegment();
+            
+            if (result == null) {
+                // Last resort: use a default name
+                String mimeType = getContentResolver().getType(uri);
+                if (mimeType != null) {
+                    if (mimeType.startsWith("text/")) {
+                        return "text_file.txt";
+                    } else if (mimeType.startsWith("audio/")) {
+                        return "audio_file.mp3";
+                    }
+                }
+                return "selected_file";
             }
         }
         
@@ -389,7 +340,7 @@ public class AddStoryActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
-            finish();
+            onBackPressed();
             return true;
         }
         return super.onOptionsItemSelected(item);

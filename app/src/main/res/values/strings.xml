@@ -12,20 +12,21 @@
     <string name="story_description">Description</string>
     <string name="text_content">Text Content</string>
     <string name="audio_file">Audio File</string>
-    <string name="timing_file">Timing File (Optional)</string>
-    <string name="timing_file_helper">Timing file should contain timestamps with corresponding text segments</string>
+    <string name="automatic_timing">Automatic Timing</string>
+    <string name="automatic_timing_helper">The text will be automatically split into sentences and assigned default timings. You can adjust these timings in the next screen.</string>
     <string name="select_text_file">Select Text File</string>
     <string name="select_audio_file">Select Audio File</string>
-    <string name="select_timing_file">Select Timing File</string>
     <string name="change">Change</string>
     <string name="import_story">Import Story</string>
     <string name="import_success">Story imported successfully</string>
     <string name="error_import">Failed to import story</string>
+    <string name="error_reading_file">Error reading file</string>
+    <string name="error_invalid_input">Please check your input</string>
     <string name="vocabulary">Vocabulary</string>
     <string name="custom">Custom</string>
     <string name="by">by</string>
     <string name="use_ai_alignment">Use AI to align text with audio</string>
-    <string name="ai_alignment_description">Uses speech recognition to automatically align text segments with audio. If no timing file is provided, this will try to match text segments with spoken audio.</string>
+    <string name="ai_alignment_description">Uses speech recognition to automatically align text segments with audio. This will help match text segments with spoken audio.</string>
     
     <!-- Delete functionality -->
     <string name="delete">Delete</string>
@@ -46,4 +47,8 @@
     <string name="play_segment">Play Segment</string>
     <string name="capturing">Capturing...</string>
     <string name="capture_complete">Capture Complete</string>
+    <string name="no_file_selected">No file selected</string>
+    <string name="please_fill_required_fields">Please fill in all required fields</string>
+    <string name="using_ai_alignment">Using AI to align text with audio…</string>
+    <string name="aligning_progress">Aligning: %1$d%%</string>
 </resources>
