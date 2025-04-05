@@ -30,7 +30,7 @@ public class KanjiDictionary {
     private static final String TAG = "KanjiDictionary";
     
     // The URL for KANJIDIC2 (gzipped XML file)
-    private static final String KANJIDIC_URL = "http://www.edrdg.org/kanjidic/kanjidic2.xml.gz";
+    private static final String KANJIDIC_URL = "https://www.edrdg.org/kanjidic/kanjidic2.xml.gz";
     
     // Dictionary file name
     private static final String KANJIDIC_FILE = "kanjidic2.xml";

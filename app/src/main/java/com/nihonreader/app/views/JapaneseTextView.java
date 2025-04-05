@@ -7,7 +7,8 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.method.LinkMovementMethod;
-import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.UnderlineSpan;
 import android.text.style.ClickableSpan;
 import android.util.AttributeSet;
 import android.view.View;
@@ -32,7 +33,8 @@ public class JapaneseTextView extends AppCompatTextView {
     private OnWordClickListener onWordClickListener;
     private SpannableStringBuilder spannableBuilder;
     private JapaneseWord highlightedWord;
-    private BackgroundColorSpan currentHighlightSpan;
+    private ForegroundColorSpan currentColorSpan;
+    private UnderlineSpan currentUnderlineSpan;
     
     // Colors for highlighting
     private int highlightColor;
@@ -60,7 +62,7 @@ public class JapaneseTextView extends AppCompatTextView {
         // Enable click handling on text
         setMovementMethod(LinkMovementMethod.getInstance());
         // Get highlight color from resources
-        highlightColor = getContext().getResources().getColor(com.nihonreader.app.R.color.wordHighlight);
+        highlightColor = getContext().getResources().getColor(com.nihonreader.app.R.color.wordHighlightBlue);
     }
     
     public void setOnWordClickListener(OnWordClickListener listener) {
@@ -121,7 +123,7 @@ public class JapaneseTextView extends AppCompatTextView {
     }
     
     /**
-     * Highlight a word by applying a background color
+     * Highlight a word by applying a light blue color and underline (SatoriReader style)
      */
     public void highlightWord(JapaneseWord word) {
         // Remove previous highlight if any
@@ -129,10 +131,18 @@ public class JapaneseTextView extends AppCompatTextView {
         
         // Add new highlight
         highlightedWord = word;
-        currentHighlightSpan = new BackgroundColorSpan(highlightColor);
+        currentColorSpan = new ForegroundColorSpan(highlightColor);
+        currentUnderlineSpan = new UnderlineSpan();
         
         spannableBuilder.setSpan(
-                currentHighlightSpan,
+                currentColorSpan,
+                word.getStartIndex(),
+                word.getEndIndex(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        );
+        
+        spannableBuilder.setSpan(
+                currentUnderlineSpan,
                 word.getStartIndex(),
                 word.getEndIndex(),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -145,11 +155,17 @@ public class JapaneseTextView extends AppCompatTextView {
      * Remove the current highlight
      */
     public void removeHighlight() {
-        if (spannableBuilder != null && currentHighlightSpan != null && highlightedWord != null) {
-            spannableBuilder.removeSpan(currentHighlightSpan);
+        if (spannableBuilder != null && highlightedWord != null) {
+            if (currentColorSpan != null) {
+                spannableBuilder.removeSpan(currentColorSpan);
+            }
+            if (currentUnderlineSpan != null) {
+                spannableBuilder.removeSpan(currentUnderlineSpan);
+            }
             setText(spannableBuilder);
             highlightedWord = null;
-            currentHighlightSpan = null;
+            currentColorSpan = null;
+            currentUnderlineSpan = null;
         }
     }
     

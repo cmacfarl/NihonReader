@@ -6,10 +6,11 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.nihonreader.app.R;
-import com.nihonreader.app.dialogs.WordDetailsDialog;
+import com.nihonreader.app.fragments.WordPopupFragment;
 import com.nihonreader.app.models.AudioSegment;
 import com.nihonreader.app.models.JapaneseWord;
 import com.nihonreader.app.repository.StoryRepository;
@@ -59,24 +60,27 @@ public class TextSegmentAdapter extends RecyclerView.Adapter<TextSegmentAdapter.
                 dictionaryLookupService.lookupWord(word, new DictionaryLookupService.OnWordDefinitionFoundListener() {
                     @Override
                     public void onDefinitionFound(com.nihonreader.app.models.VocabularyItem vocabularyItem) {
-                        // Show dialog with the word details including vocabulary item
+                        // Show popup fragment with the word details
                         holder.itemView.post(() -> {
-                            WordDetailsDialog dialog = new WordDetailsDialog(
-                                    holder.itemView.getContext(), 
-                                    word, 
-                                    vocabularyItem);
-                            dialog.show();
+                            Context context = holder.itemView.getContext();
+                            if (context instanceof FragmentActivity) {
+                                FragmentActivity activity = (FragmentActivity) context;
+                                WordPopupFragment fragment = WordPopupFragment.newInstance(word, vocabularyItem);
+                                fragment.show(activity.getSupportFragmentManager(), "word_popup");
+                            }
                         });
                     }
                     
                     @Override
                     public void onDefinitionNotFound() {
-                        // Show dialog with just the word details from Kuromoji
+                        // Show popup fragment with just the word details from Kuromoji
                         holder.itemView.post(() -> {
-                            WordDetailsDialog dialog = new WordDetailsDialog(
-                                    holder.itemView.getContext(), 
-                                    word);
-                            dialog.show();
+                            Context context = holder.itemView.getContext();
+                            if (context instanceof FragmentActivity) {
+                                FragmentActivity activity = (FragmentActivity) context;
+                                WordPopupFragment fragment = WordPopupFragment.newInstance(word, null);
+                                fragment.show(activity.getSupportFragmentManager(), "word_popup");
+                            }
                         });
                     }
                 });
