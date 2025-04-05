@@ -2,6 +2,7 @@ package com.nihonreader.app.models;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 /**
@@ -17,12 +18,22 @@ public class VocabularyItem {
     private String reading;
     private String meaning;
     private String notes;
+    private String dictionaryForm; // Base form of a verb or adjective
 
+    @Ignore
     public VocabularyItem(@NonNull String id, String word, String reading, String meaning) {
         this.id = id;
         this.word = word;
         this.reading = reading;
         this.meaning = meaning;
+    }
+
+    public VocabularyItem(@NonNull String id, String word, String reading, String meaning, String dictionaryForm) {
+        this.id = id;
+        this.word = word;
+        this.reading = reading;
+        this.meaning = meaning;
+        this.dictionaryForm = dictionaryForm;
     }
 
     @NonNull
@@ -64,5 +75,13 @@ public class VocabularyItem {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+    
+    public String getDictionaryForm() {
+        return dictionaryForm;
+    }
+    
+    public void setDictionaryForm(String dictionaryForm) {
+        this.dictionaryForm = dictionaryForm;
     }
 }

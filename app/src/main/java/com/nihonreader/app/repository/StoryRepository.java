@@ -50,6 +50,15 @@ public class StoryRepository {
         this.application = application;
     }
     
+    public StoryRepository(Context context) {
+        AppDatabase database = AppDatabase.getInstance(context);
+        this.storyDao = database.storyDao();
+        this.storyContentDao = database.storyContentDao();
+        this.userProgressDao = database.userProgressDao();
+        this.vocabularyDao = database.vocabularyDao();
+        this.application = null;
+    }
+    
     // Story operations
     public LiveData<List<Story>> getAllStories() {
         return storyDao.getAllStories();
@@ -112,6 +121,18 @@ public class StoryRepository {
     
     public void insert(VocabularyItem vocabularyItem) {
         new InsertVocabularyAsyncTask(vocabularyDao).execute(vocabularyItem);
+    }
+    
+    public void insertVocabularyItem(VocabularyItem vocabularyItem) {
+        new InsertVocabularyAsyncTask(vocabularyDao).execute(vocabularyItem);
+    }
+    
+    public VocabularyItem getVocabularyByWord(String word) {
+        try {
+            return vocabularyDao.getVocabularyByWord(word);
+        } catch (Exception e) {
+            return null;
+        }
     }
     
     // Import story with audio

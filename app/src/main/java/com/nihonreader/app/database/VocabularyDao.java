@@ -32,4 +32,7 @@ public interface VocabularyDao {
     
     @Query("SELECT * FROM vocabulary ORDER BY word ASC")
     LiveData<List<VocabularyItem>> getAllVocabulary();
+    
+    @Query("SELECT * FROM vocabulary WHERE word = :word LIMIT 1")
+    VocabularyItem getVocabularyByWord(String word);
 }
