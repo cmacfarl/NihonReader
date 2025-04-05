@@ -34,4 +34,16 @@
     <string name="cancel">Cancel</string>
     <string name="confirm">Confirm</string>
     <string name="story_deleted">Story deleted successfully</string>
+    
+    <!-- Timestamp editing -->
+    <string name="edit_timestamps">Edit Timestamps</string>
+    <string name="title_activity_edit_timestamps">Edit Timestamps</string>
+    <string name="save_timestamps">Save Timestamps</string>
+    <string name="timestamps_saved">Timestamps saved successfully</string>
+    <string name="start_time">Start Time</string>
+    <string name="end_time">End Time</string>
+    <string name="segment_text">Segment Text</string>
+    <string name="play_segment">Play Segment</string>
+    <string name="capturing">Capturing...</string>
+    <string name="capture_complete">Capture Complete</string>
 </resources>

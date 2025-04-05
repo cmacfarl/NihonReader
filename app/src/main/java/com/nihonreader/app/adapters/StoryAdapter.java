@@ -127,7 +127,8 @@ public class StoryAdapter extends RecyclerView.Adapter<StoryAdapter.StoryViewHol
             int position = getAdapterPosition();
             if (position != RecyclerView.NO_POSITION) {
                 menu.setHeaderTitle(textViewTitle.getText());
-                menu.add(position, R.id.action_delete, 0, R.string.delete);
+                menu.add(position, R.id.action_edit_timestamps, 0, R.string.edit_timestamps);
+                menu.add(position, R.id.action_delete, 1, R.string.delete);
             }
         }
     }
