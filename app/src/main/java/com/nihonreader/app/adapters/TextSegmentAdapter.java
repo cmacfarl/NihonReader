@@ -60,12 +60,19 @@ public class TextSegmentAdapter extends RecyclerView.Adapter<TextSegmentAdapter.
                 dictionaryLookupService.lookupWord(word, new DictionaryLookupService.OnWordDefinitionFoundListener() {
                     @Override
                     public void onDefinitionFound(com.nihonreader.app.models.VocabularyItem vocabularyItem) {
-                        // Show popup fragment with the word details
+                        // Show popup fragment with the word details below the clicked word
                         holder.itemView.post(() -> {
                             Context context = holder.itemView.getContext();
                             if (context instanceof FragmentActivity) {
                                 FragmentActivity activity = (FragmentActivity) context;
-                                WordPopupFragment fragment = WordPopupFragment.newInstance(word, vocabularyItem);
+                                
+                                // Calculate click position (if available from event)
+                                int x = 0;
+                                int y = 0;
+                                
+                                // Create and show the fragment
+                                WordPopupFragment fragment = WordPopupFragment.newInstance(
+                                        word, vocabularyItem, holder.japaneseTextView, x, y);
                                 fragment.show(activity.getSupportFragmentManager(), "word_popup");
                             }
                         });
@@ -78,7 +85,14 @@ public class TextSegmentAdapter extends RecyclerView.Adapter<TextSegmentAdapter.
                             Context context = holder.itemView.getContext();
                             if (context instanceof FragmentActivity) {
                                 FragmentActivity activity = (FragmentActivity) context;
-                                WordPopupFragment fragment = WordPopupFragment.newInstance(word, null);
+                                
+                                // Calculate click position (if available from event)
+                                int x = 0;
+                                int y = 0;
+                                
+                                // Create and show the fragment
+                                WordPopupFragment fragment = WordPopupFragment.newInstance(
+                                        word, null, holder.japaneseTextView, x, y);
                                 fragment.show(activity.getSupportFragmentManager(), "word_popup");
                             }
                         });

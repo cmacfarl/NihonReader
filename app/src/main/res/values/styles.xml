@@ -28,9 +28,16 @@
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
     
     <!-- Style for word popup that mimics SatoriReader -->
-    <style name="WordPopupStyle">
-        <item name="android:background">@drawable/word_popup_background</item>
-        <item name="android:padding">16dp</item>
-        <item name="android:elevation">8dp</item>
+    <style name="WordPopupStyle" parent="Theme.MaterialComponents.Dialog">
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowSoftInputMode">stateUnchanged</item>
+        <item name="android:windowMinWidthMajor">0dp</item>
+        <item name="android:windowMinWidthMinor">0dp</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowFrame">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowCloseOnTouchOutside">true</item>
     </style>
 </resources>
