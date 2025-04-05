@@ -9,11 +9,11 @@
     android:paddingHorizontal="12dp"
     android:background="@drawable/text_segment_background">
 
-    <TextView
+    <com.nihonreader.app.views.JapaneseTextView
         android:id="@+id/text_view_segment"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:textColor="@color/textColorPrimary"
+        android:textColor="@color/white"
         android:textSize="18sp"
         android:lineSpacingExtra="4dp"
         app:layout_constraintBottom_toBottomOf="parent"

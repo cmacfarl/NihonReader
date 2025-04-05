@@ -81,7 +81,7 @@ public class StoryReaderActivity extends AppCompatActivity {
         
         // Setup recycler view
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new TextSegmentAdapter();
+        adapter = new TextSegmentAdapter(this);
         recyclerView.setAdapter(adapter);
         
         // Get story ID from intent
