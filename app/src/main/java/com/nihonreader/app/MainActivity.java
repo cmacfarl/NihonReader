@@ -59,9 +59,6 @@ public class MainActivity extends AppCompatActivity implements StoryAdapter.OnSt
         adapter = new StoryAdapter(this);
         recyclerView.setAdapter(adapter);
         
-        // Register the RecyclerView for context menu
-        registerForContextMenu(recyclerView);
-        
         // Setup view model
         viewModel = new ViewModelProvider(this).get(StoryListViewModel.class);
         viewModel.getAllStories().observe(this, stories -> {
@@ -99,30 +96,17 @@ public class MainActivity extends AppCompatActivity implements StoryAdapter.OnSt
         startActivity(intent);
     }
     
+    @Override
+    public void onEditTimestampsClick(Story story) {
+        // Launch the EditTimestampsActivity
+        Intent intent = new Intent(MainActivity.this, EditTimestampsActivity.class);
+        intent.putExtra(EditTimestampsActivity.EXTRA_STORY_ID, story.getId());
+        startActivity(intent);
+    }
     
     @Override
-    public boolean onContextItemSelected(@NonNull MenuItem item) {
-        try {
-            // item.getGroupId() contains the position of the selected item
-            int position = item.getGroupId();
-            Story selectedStory = adapter.getStoryAt(position);
-            
-            if (selectedStory != null) {
-                if (item.getItemId() == R.id.action_edit_timestamps) {
-                    // Launch the EditTimestampsActivity
-                    Intent intent = new Intent(MainActivity.this, EditTimestampsActivity.class);
-                    intent.putExtra(EditTimestampsActivity.EXTRA_STORY_ID, selectedStory.getId());
-                    startActivity(intent);
-                    return true;
-                } else if (item.getItemId() == R.id.action_delete) {
-                    showDeleteConfirmationDialog(selectedStory);
-                    return true;
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return super.onContextItemSelected(item);
+    public void onDeleteStoryClick(Story story) {
+        showDeleteConfirmationDialog(story);
     }
     
     private void showDeleteConfirmationDialog(Story story) {
