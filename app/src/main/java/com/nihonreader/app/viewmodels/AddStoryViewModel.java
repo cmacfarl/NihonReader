@@ -9,6 +9,18 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.nihonreader.app.repository.StoryRepository;
+import com.nihonreader.app.utils.JapaneseTextUtils;
+import com.nihonreader.app.utils.FileUtils;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.List;
 
 /**
  * ViewModel for the add story screen
@@ -23,11 +35,9 @@ public class AddStoryViewModel extends AndroidViewModel {
     
     private MutableLiveData<Uri> textFileUri = new MutableLiveData<>();
     private MutableLiveData<Uri> audioFileUri = new MutableLiveData<>();
-    private MutableLiveData<Uri> timingFileUri = new MutableLiveData<>();
     
     private MutableLiveData<String> textFileName = new MutableLiveData<>();
     private MutableLiveData<String> audioFileName = new MutableLiveData<>();
-    private MutableLiveData<String> timingFileName = new MutableLiveData<>();
     
     private MutableLiveData<String> textContent = new MutableLiveData<>();
     
@@ -81,14 +91,6 @@ public class AddStoryViewModel extends AndroidViewModel {
         this.audioFileUri.setValue(audioFileUri);
     }
     
-    public LiveData<Uri> getTimingFileUri() {
-        return timingFileUri;
-    }
-    
-    public void setTimingFileUri(Uri timingFileUri) {
-        this.timingFileUri.setValue(timingFileUri);
-    }
-    
     public LiveData<String> getTextFileName() {
         return textFileName;
     }
@@ -103,14 +105,6 @@ public class AddStoryViewModel extends AndroidViewModel {
     
     public void setAudioFileName(String audioFileName) {
         this.audioFileName.setValue(audioFileName);
-    }
-    
-    public LiveData<String> getTimingFileName() {
-        return timingFileName;
-    }
-    
-    public void setTimingFileName(String timingFileName) {
-        this.timingFileName.setValue(timingFileName);
     }
     
     public LiveData<String> getTextContent() {
@@ -141,49 +135,74 @@ public class AddStoryViewModel extends AndroidViewModel {
         return importStatus;
     }
     
-    public void importStory() {
-        if (isImporting.getValue() != null && isImporting.getValue()) {
+    public void importStory(StoryRepository.ImportStoryCallback callback) {
+        if (!validateInputs()) {
+            callback.onError("Please fill in all required fields");
             return;
         }
-        
-        isImporting.setValue(true);
-        importStatus.setValue("Starting import...");
-        
-        boolean useAi = useAiAlignment.getValue() != null && useAiAlignment.getValue();
-        
-        repository.importCustomStory(
+
+        // Get the text content from the text file
+        String textContent = null;
+        try {
+            textContent = FileUtils.readTextFromUri(getApplication(), textFileUri.getValue());
+        } catch (IOException e) {
+            callback.onError("Failed to read text file: " + e.getMessage());
+            return;
+        }
+
+        // Split text into sentences using JapaneseTextUtils
+        List<String> sentences = JapaneseTextUtils.splitIntoSentences(textContent);
+
+        // Create a temporary file for the timestamps
+        File tempFile = null;
+        try {
+            tempFile = File.createTempFile("timestamps_", ".txt", getApplication().getCacheDir());
+            FileOutputStream fos = new FileOutputStream(tempFile);
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(fos));
+
+            // Write timestamps in the LRC format expected by AudioUtils.parseTimingFile
+            // Format: [MM:SS.CC] Text
+            long currentTime = 0;
+            for (String sentence : sentences) {
+                // Assume each sentence takes about 3 seconds to read
+                int minutes = (int) (currentTime / 60000);
+                int seconds = (int) ((currentTime % 60000) / 1000);
+                int centis = (int) ((currentTime % 1000) / 10);
+                
+                // Format: [MM:SS.CC] Text
+                writer.write(String.format("[%02d:%02d.%02d] %s\n", minutes, seconds, centis, sentence));
+                
+                // Increment current time for next sentence
+                currentTime += 3000;
+            }
+            writer.close();
+
+            // Create a Uri from the temporary file
+            Uri timingUri = Uri.fromFile(tempFile);
+
+            // Call repository to import the story
+            repository.importCustomStory(
                 title.getValue(),
                 author.getValue(),
                 description.getValue(),
                 textFileUri.getValue(),
                 audioFileUri.getValue(),
-                timingFileUri.getValue(),
-                useAi,
-                new StoryRepository.ImportStoryCallback() {
-                    @Override
-                    public void onSuccess(String storyId) {
-                        isImporting.postValue(false);
-                        importResult.postValue("success");
-                    }
-                    
-                    @Override
-                    public void onError(String errorMessage) {
-                        isImporting.postValue(false);
-                        importResult.postValue("error: " + errorMessage);
-                    }
-                    
-                    @Override
-                    public void onProgressUpdate(String status) {
-                        importStatus.postValue(status);
-                    }
-                }
-        );
+                timingUri,
+                useAiAlignment.getValue(),
+                callback
+            );
+        } catch (IOException e) {
+            callback.onError("Failed to create timestamp file: " + e.getMessage());
+            return;
+        }
     }
     
     public boolean validateInputs() {
-        return title.getValue() != null && !title.getValue().isEmpty() &&
-               author.getValue() != null && !author.getValue().isEmpty() &&
-               textFileUri.getValue() != null &&
-               audioFileUri.getValue() != null;
+        boolean isTitleValid = title.getValue() != null && !title.getValue().isEmpty();
+        boolean isAuthorValid = author.getValue() != null && !author.getValue().isEmpty();
+        boolean isTextFileValid = textFileUri.getValue() != null;
+        boolean isAudioFileValid = audioFileUri.getValue() != null;
+
+        return isTitleValid && isAuthorValid && isTextFileValid && isAudioFileValid;
     }
 }

@@ -181,7 +181,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/timing_file"
+                android:text="@string/automatic_timing"
                 android:textSize="16sp"
                 android:textColor="@color/textColorPrimary"
                 android:layout_marginBottom="4dp" />
@@ -189,7 +189,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/timing_file_helper"
+                android:text="@string/automatic_timing_helper"
                 android:textSize="12sp"
                 android:textColor="@color/textColorSecondary"
                 android:layout_marginBottom="8dp" />
@@ -208,77 +208,32 @@
                 android:text="@string/ai_alignment_description"
                 android:textSize="12sp"
                 android:textColor="@color/textColorSecondary"
-                android:layout_marginBottom="8dp" />
-
-            <FrameLayout
-                android:id="@+id/timing_file_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_select_timing"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/select_timing_file"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
-                <LinearLayout
-                    android:id="@+id/timing_preview_container"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:background="@drawable/file_preview_background"
-                    android:padding="12dp"
-                    android:visibility="gone">
-
-                    <TextView
-                        android:id="@+id/text_view_timing_file_name"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:textColor="@color/textColorPrimary"
-                        tools:text="timing.txt" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_change_timing"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/change"
-                        android:textSize="12sp"
-                        style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-                </LinearLayout>
-            </FrameLayout>
+                android:layout_marginBottom="16dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_import"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/import_story"
-                android:layout_marginTop="16dp"
-                android:padding="12dp"
-                app:cornerRadius="8dp" />
+                android:layout_marginBottom="16dp" />
 
             <ProgressBar
                 android:id="@+id/progress_bar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="16dp"
+                android:layout_gravity="center"
                 android:visibility="gone" />
-                
+
             <TextView
                 android:id="@+id/text_view_status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
                 android:gravity="center"
                 android:textColor="@color/textColorSecondary"
                 android:visibility="gone" />
 
         </LinearLayout>
+
     </androidx.core.widget.NestedScrollView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
