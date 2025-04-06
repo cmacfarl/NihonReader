@@ -51,4 +51,5 @@
     <string name="please_fill_required_fields">Please fill in all required fields</string>
     <string name="using_ai_alignment">Using AI to align text with audio…</string>
     <string name="aligning_progress">Aligning: %1$d%%</string>
+    <string name="segments_merged">Segments merged successfully</string>
 </resources>

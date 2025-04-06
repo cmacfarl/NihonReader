@@ -37,6 +37,7 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
         void onPlaySegment(int position, long startTime, long endTime);
         void onPlaybackPositionChanged(long position);
         void onBeginTimeCaptureForSegment(int position);
+        void onMergeSegments(int position);
     }
     
     public TimestampAdapter(MediaPlayer mediaPlayer, OnTimestampEditListener listener) {
@@ -119,6 +120,19 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
                 }
             }
         });
+        
+        // Merge with previous segment button
+        if (position == 0) {
+            // Hide merge button for the first segment
+            holder.buttonMerge.setVisibility(View.INVISIBLE);
+        } else {
+            holder.buttonMerge.setVisibility(View.VISIBLE);
+            holder.buttonMerge.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onMergeSegments(position);
+                }
+            });
+        }
     }
     
     private void setupStartTimeWatcher(TimestampViewHolder holder) {
@@ -231,6 +245,30 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
     }
     
     /**
+     * Merge a segment with the one above it (merges position with position-1)
+     * @param position The position of the segment to merge with the previous one
+     */
+    public void mergeWithPreviousSegment(int position) {
+        if (position > 0 && position < segments.size()) {
+            AudioSegment currentSegment = segments.get(position);
+            AudioSegment previousSegment = segments.get(position - 1);
+            
+            // Merge text: previousSegment text + currentSegment text
+            previousSegment.setText(previousSegment.getText() + " " + currentSegment.getText());
+            
+            // Keep previousSegment's start time, use currentSegment's end time
+            previousSegment.setEnd(currentSegment.getEnd());
+            
+            // Remove the current segment
+            segments.remove(position);
+            
+            // Notify adapter about the changes
+            notifyItemChanged(position - 1);
+            notifyItemRemoved(position);
+        }
+    }
+    
+    /**
      * ViewHolder for timestamp items
      */
     public class TimestampViewHolder extends RecyclerView.ViewHolder {
@@ -239,6 +277,7 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
         public EditText editEndTime;
         ImageButton buttonSetStart;
         ImageButton buttonSetEnd;
+        ImageButton buttonMerge;
         public Button buttonPlaySegment;
         int position;
         TextWatcher startTimeWatcher;
@@ -252,6 +291,7 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
             editEndTime = itemView.findViewById(R.id.edit_end_time);
             buttonSetStart = itemView.findViewById(R.id.button_set_start);
             buttonSetEnd = itemView.findViewById(R.id.button_set_end);
+            buttonMerge = itemView.findViewById(R.id.button_merge);
             buttonPlaySegment = itemView.findViewById(R.id.button_play_segment);
         }
     }

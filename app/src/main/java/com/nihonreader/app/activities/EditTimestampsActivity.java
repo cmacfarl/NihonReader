@@ -466,4 +466,18 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
         // Display a toast to inform the user
         Toast.makeText(this, "Recording start/end times. Press pause when segment ends.", Toast.LENGTH_LONG).show();
     }
+    
+    @Override
+    public void onMergeSegments(int position) {
+        if (adapter != null && position > 0 && position < adapter.getItemCount()) {
+            // Merge the segment at 'position' with the one above it
+            adapter.mergeWithPreviousSegment(position);
+            
+            // Mark as modified
+            isModified = true;
+            
+            // Show a toast to confirm the merge
+            Toast.makeText(this, R.string.segments_merged, Toast.LENGTH_SHORT).show();
+        }
+    }
 }
