@@ -53,28 +53,65 @@ cd nihon-reader/NihonReaderAndroid
 
 ## Usage
 
-### Adding Custom Stories
+### Story Library
 
-1. Prepare your text and audio files:
-   - Text file: Plain text (.txt) file with the story content
-   - Audio file: MP3 or other supported audio format
-   - (Optional) Timing file: A text file with timestamps and corresponding text segments
+The home screen displays your story library with a list of available stories:
 
-2. Timing file format:
-```
-[00:00.00] Text segment one
-[00:05.25] Text segment two
-...
-```
+- **Open a Story**: Tap on any story title to open it in the reader.
+- **View Story Details**: Long-press on a story to view complete details including title, author, description, and when you last read it.
+- **Story Options**: Tap the three-dot menu icon on the right side of any story to access additional options:
+  - **Edit Timestamps**: Adjust the timing synchronization between text and audio.
+  - **Delete**: Remove the story from your library (requires confirmation).
+- **Add New Story**: Tap the floating "+" button at the bottom right of the screen to add a new story.
 
-3. In the app, tap "Add Story" and follow the prompts to import your files.
+### Adding Stories
+
+When adding a new story:
+
+1. Fill in the **Title** and **Author** fields.
+2. Add an optional **Description**.
+3. Select a **Text File** containing Japanese text (tap "Select Text File").
+4. Select an **Audio File** of the narration (tap "Select Audio File").
+5. Tap "Add Story" to import your content.
+
+The app will automatically:
+- Generate timestamps by splitting the Japanese text into sentences using linguistic analysis
+- Assign default timings to each segment (approximately 3 seconds per segment)
+- Open the timestamp editor for further refinement
 
 ### Reading Stories
 
-1. Select a story from the home screen.
-2. Use the audio controls to play, pause, and navigate through the story.
-3. Text segments will be highlighted as the audio plays.
+When reading a story:
+
+- The audio controls at the bottom allow you to **play/pause**, **skip forward/backward**, and adjust the **playback position**.
+- Text segments are highlighted in sync with the audio playback.
+- Tap on any text segment to jump to that portion of the audio.
+
+### Editing Timestamps
+
+The timestamp editor allows you to fine-tune the synchronization between text and audio:
+
+- **Play Segment**: Plays the current segment to check timing.
+- **Set Start/End Time**: When audio is playing, you can set the current position as the start or end time for any segment.
+- **Manual Adjustment**: Directly edit the start and end times in the text fields.
+- **Merge Segments**: Click the up arrow in the upper right corner of any segment (except the first one) to merge it with the segment above it. This is useful for combining sentences that should be played together.
+- **Save Changes**: Tap the save button (disk icon) at the bottom right when you're satisfied with your edits.
+
+### Automatic Timestamp Generation
+
+When adding a story, the app automatically:
+1. Splits the text into logical sentences using Japanese language analysis
+2. Creates timestamp segments for each sentence
+3. Assigns default timing values to each segment (3 seconds per segment)
+
+You can then refine these automatically generated timestamps in the timestamp editor.
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgements
+
+Uses KANJIDIC2 for the dictionary.
+
+Uses Atilika Kuromoji for Japanese tokenization.
