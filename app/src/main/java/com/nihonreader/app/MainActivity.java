@@ -5,9 +5,11 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,7 +26,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.nihonreader.app.activities.AddStoryActivity;
 import com.nihonreader.app.activities.EditTimestampsActivity;
 import com.nihonreader.app.activities.StoryReaderActivity;
-import com.nihonreader.app.adapters.FolderAdapter;
+import com.nihonreader.app.adapters.FolderSpinnerAdapter;
 import com.nihonreader.app.adapters.StoryAdapter;
 import com.nihonreader.app.models.Folder;
 import com.nihonreader.app.models.Story;
@@ -40,18 +42,16 @@ import java.util.List;
  * Main activity that displays the list of available stories
  */
 public class MainActivity extends AppCompatActivity implements 
-        StoryAdapter.OnStoryClickListener, 
-        FolderAdapter.OnFolderClickListener {
+        StoryAdapter.OnStoryClickListener {
     
     private StoryListViewModel storyViewModel;
     private FolderViewModel folderViewModel;
     private RecyclerView recyclerViewStories;
-    private RecyclerView recyclerViewFolders;
+    private Spinner spinnerFolders;
     private StoryAdapter storyAdapter;
-    private FolderAdapter folderAdapter;
+    private FolderSpinnerAdapter folderSpinnerAdapter;
     private LinearLayout emptyView;
     private ProgressBar progressBar;
-    private TextView currentFolderTitle;
     
     private String currentFolderId = null; // null means "All Stories"
     private List<Story> currentStories = new ArrayList<>();
@@ -67,25 +67,17 @@ public class MainActivity extends AppCompatActivity implements
         
         // Setup views
         recyclerViewStories = findViewById(R.id.recycler_view_stories);
-        recyclerViewFolders = findViewById(R.id.recycler_view_folders);
+        spinnerFolders = findViewById(R.id.spinner_folders);
         emptyView = findViewById(R.id.empty_view);
         progressBar = findViewById(R.id.progress_bar);
-        currentFolderTitle = findViewById(R.id.current_folder_title);
         
         // Setup story recycler view
         recyclerViewStories.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewStories.setHasFixedSize(true);
         
-        // Setup folder recycler view
-        LinearLayoutManager folderLayoutManager = new LinearLayoutManager(this, RecyclerView.HORIZONTAL, false);
-        recyclerViewFolders.setLayoutManager(folderLayoutManager);
-        
         // Setup adapters
         storyAdapter = new StoryAdapter(this);
         recyclerViewStories.setAdapter(storyAdapter);
-        
-        folderAdapter = new FolderAdapter(this, this);
-        recyclerViewFolders.setAdapter(folderAdapter);
         
         // Setup view models
         storyViewModel = new ViewModelProvider(this).get(StoryListViewModel.class);
@@ -94,13 +86,53 @@ public class MainActivity extends AppCompatActivity implements
         // Observe folders
         folderViewModel.getAllFolders().observe(this, folders -> {
             if (folders != null) {
-                folderAdapter.setFolders(folders);
+                // Create a list with "All Stories" option
+                List<Folder> allFolders = new ArrayList<>();
+                allFolders.add(new Folder("", getString(R.string.all_stories), -1, true));
+                allFolders.addAll(folders);
+                
+                // Update spinner adapter
+                folderSpinnerAdapter = new FolderSpinnerAdapter(this, allFolders);
+                spinnerFolders.setAdapter(folderSpinnerAdapter);
+                
+                // Set selection based on current folder
+                if (currentFolderId == null) {
+                    spinnerFolders.setSelection(0);
+                } else {
+                    for (int i = 1; i < allFolders.size(); i++) {
+                        if (allFolders.get(i).getId().equals(currentFolderId)) {
+                            spinnerFolders.setSelection(i);
+                            break;
+                        }
+                    }
+                }
+                
                 updateStoryCounts();
             }
             
             // If we don't have a current folder set, load all stories
             if (currentFolderId == null) {
                 loadAllStories();
+            }
+        });
+        
+        // Setup spinner selection listener
+        spinnerFolders.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    // "All Stories" selected
+                    loadAllStories();
+                } else {
+                    // Folder selected
+                    Folder selectedFolder = (Folder) parent.getItemAtPosition(position);
+                    loadStoriesInFolder(selectedFolder.getId());
+                }
+            }
+            
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Not used
             }
         });
         
@@ -301,7 +333,6 @@ public class MainActivity extends AppCompatActivity implements
     
     private void loadAllStories() {
         currentFolderId = null;
-        currentFolderTitle.setText(R.string.all_stories);
         
         storyViewModel.getAllStories().observe(this, stories -> {
             progressBar.setVisibility(View.GONE);
@@ -311,22 +342,34 @@ public class MainActivity extends AppCompatActivity implements
                 storyAdapter.setStories(stories);
                 recyclerViewStories.setVisibility(View.VISIBLE);
                 emptyView.setVisibility(View.GONE);
+                
+                // Update "All Stories" count
+                if (folderSpinnerAdapter != null && folderSpinnerAdapter.getCount() > 0) {
+                    Folder allStoriesFolder = folderSpinnerAdapter.getItem(0);
+                    if (allStoriesFolder != null) {
+                        allStoriesFolder.setStoryCount(stories.size());
+                        folderSpinnerAdapter.notifyDataSetChanged();
+                    }
+                }
             } else {
                 currentStories.clear();
                 recyclerViewStories.setVisibility(View.GONE);
                 emptyView.setVisibility(View.VISIBLE);
+                
+                // Update "All Stories" count to 0
+                if (folderSpinnerAdapter != null && folderSpinnerAdapter.getCount() > 0) {
+                    Folder allStoriesFolder = folderSpinnerAdapter.getItem(0);
+                    if (allStoriesFolder != null) {
+                        allStoriesFolder.setStoryCount(0);
+                        folderSpinnerAdapter.notifyDataSetChanged();
+                    }
+                }
             }
         });
     }
     
     private void loadStoriesInFolder(String folderId) {
         currentFolderId = folderId;
-        
-        folderViewModel.getFolderById(folderId).observe(this, folder -> {
-            if (folder != null) {
-                currentFolderTitle.setText(folder.getName());
-            }
-        });
         
         folderViewModel.getStoriesInFolder(folderId).observe(this, stories -> {
             progressBar.setVisibility(View.GONE);
@@ -352,7 +395,10 @@ public class MainActivity extends AppCompatActivity implements
             for (Folder folder : folders) {
                 folderViewModel.getStoriesInFolder(folder.getId()).observe(this, stories -> {
                     int storyCount = stories != null ? stories.size() : 0;
-                    folderAdapter.updateStoryCounts();
+                    folder.setStoryCount(storyCount);
+                    if (folderSpinnerAdapter != null) {
+                        folderSpinnerAdapter.notifyDataSetChanged();
+                    }
                 });
             }
         });
@@ -398,25 +444,5 @@ public class MainActivity extends AppCompatActivity implements
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
-    }
-    
-    @Override
-    public void onFolderClick(Folder folder) {
-        loadStoriesInFolder(folder.getId());
-    }
-    
-    @Override
-    public void onAllStoriesClick() {
-        loadAllStories();
-    }
-    
-    @Override
-    public void onEditFolderClick(Folder folder) {
-        showFolderDialog(folder);
-    }
-    
-    @Override
-    public void onDeleteFolderClick(Folder folder) {
-        showDeleteFolderConfirmationDialog(folder);
     }
 }
