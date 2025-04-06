@@ -2,6 +2,8 @@ package com.nihonreader.app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.SpannableString;
+import android.text.style.ForegroundColorSpan;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -153,6 +155,16 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        
+        // Set menu item text color to white
+        for (int i = 0; i < menu.size(); i++) {
+            MenuItem item = menu.getItem(i);
+            SpannableString spanString = new SpannableString(item.getTitle().toString());
+            spanString.setSpan(new ForegroundColorSpan(getResources().getColor(android.R.color.white)), 
+                            0, spanString.length(), 0);
+            item.setTitle(spanString);
+        }
+        
         return true;
     }
     
@@ -162,6 +174,16 @@ public class MainActivity extends AppCompatActivity implements
         
         if (id == R.id.action_create_folder) {
             showFolderDialog(null);
+            return true;
+        } else if (id == R.id.action_edit_folder) {
+            // Get the currently selected folder
+            int position = spinnerFolders.getSelectedItemPosition();
+            if (position > 0) { // Skip "All Stories" option (position 0)
+                Folder selectedFolder = (Folder) spinnerFolders.getItemAtPosition(position);
+                showFolderDialog(selectedFolder);
+            } else {
+                Toast.makeText(this, R.string.cannot_edit_all_stories_folder, Toast.LENGTH_SHORT).show();
+            }
             return true;
         }
         
