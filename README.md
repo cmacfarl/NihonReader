@@ -1,6 +1,6 @@
 # Nihon Reader (Android)
 
-A native Android application for reading Japanese texts with audio synchronization. Inspired by Satori Reader, but with the ability to add custom stories with associated audio.
+A native Android application for reading Japanese transcripts with audio synchronization. Inspired by Satori Reader, but with the ability to add custom stories with associated audio.
 
 ## Features
 
