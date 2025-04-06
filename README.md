@@ -104,7 +104,7 @@ When adding a story, the app automatically:
 2. Creates timestamp segments for each sentence
 3. Assigns default timing values to each segment (3 seconds per segment)
 
-You can then refine these automatically generated timestamps in the timestamp editor for a perfect reading experience.
+You can then refine these automatically generated timestamps in the timestamp editor.
 
 ## License
 
@@ -113,4 +113,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgements
 
 Uses KANJIDIC2 for the dictionary.
+
 Uses Atilika Kuromoji for Japanese tokenization.
