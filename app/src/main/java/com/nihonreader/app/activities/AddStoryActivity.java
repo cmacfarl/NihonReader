@@ -63,7 +63,6 @@ public class AddStoryActivity extends AppCompatActivity {
     
     private ProgressBar progressBar;
     private TextView textViewStatus;
-    private CheckBox checkboxUseAi;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,7 +106,6 @@ public class AddStoryActivity extends AppCompatActivity {
         
         progressBar = findViewById(R.id.progress_bar);
         textViewStatus = findViewById(R.id.text_view_status);
-        checkboxUseAi = findViewById(R.id.checkbox_use_ai);
     }
     
     private void setupObservers() {
@@ -157,11 +155,8 @@ public class AddStoryActivity extends AppCompatActivity {
             }
         });
 
-        viewModel.getUseAiAlignment().observe(this, useAi -> {
-            if (useAi != null) {
-                checkboxUseAi.setChecked(useAi);
-            }
-        });
+        // Set AI alignment to true by default
+        viewModel.setUseAiAlignment(true);
     }
     
     private void setupClickListeners() {
@@ -251,11 +246,6 @@ public class AddStoryActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, R.string.please_fill_required_fields, Toast.LENGTH_SHORT).show();
             }
-        });
-        
-        // AI checkbox
-        checkboxUseAi.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            viewModel.setUseAiAlignment(isChecked);
         });
     }
     

@@ -84,6 +84,32 @@ public class StoryRepository {
         new UpdateLastOpenedAsyncTask(storyDao).execute(new String[]{storyId, timestamp});
     }
     
+    // New methods for folder operations
+    
+    public LiveData<List<Story>> getStoriesInFolder(String folderId) {
+        return storyDao.getStoriesInFolder(folderId);
+    }
+    
+    public LiveData<List<Story>> getStoriesWithoutFolder() {
+        return storyDao.getStoriesWithoutFolder();
+    }
+    
+    public void moveStoryToFolder(String storyId, String folderId, int position) {
+        new MoveStoryToFolderAsyncTask(storyDao).execute(new StoryFolderParams(storyId, folderId, position));
+    }
+    
+    public void updateStoryPosition(String storyId, int position) {
+        new UpdateStoryPositionAsyncTask(storyDao).execute(new PositionParams(storyId, position));
+    }
+    
+    public void reorderStories(List<Story> stories) {
+        new ReorderStoriesAsyncTask(storyDao).execute(stories);
+    }
+    
+    public void moveAllStories(String fromFolderId, String toFolderId) {
+        new MoveAllStoriesAsyncTask(storyDao).execute(new FolderMoveParams(fromFolderId, toFolderId));
+    }
+    
     // Story content operations
     public LiveData<StoryContent> getContentForStory(String storyId) {
         return storyContentDao.getContentForStory(storyId);
@@ -471,5 +497,114 @@ public class StoryRepository {
         void onSuccess(String storyId);
         void onError(String errorMessage);
         void onProgressUpdate(String status);
+    }
+    
+    // Additional AsyncTask classes for folder and ordering operations
+    
+    private static class MoveStoryToFolderAsyncTask extends AsyncTask<StoryFolderParams, Void, Void> {
+        private StoryDao storyDao;
+        
+        MoveStoryToFolderAsyncTask(StoryDao storyDao) {
+            this.storyDao = storyDao;
+        }
+        
+        @Override
+        protected Void doInBackground(StoryFolderParams... params) {
+            if (params.length > 0) {
+                StoryFolderParams param = params[0];
+                
+                // Make room for the story in the target folder
+                storyDao.shiftStoryPositionsForInsert(param.folderId, param.position);
+                
+                // Move the story to the folder
+                storyDao.moveStoryToFolder(param.storyId, param.folderId, param.position);
+            }
+            return null;
+        }
+    }
+    
+    private static class UpdateStoryPositionAsyncTask extends AsyncTask<PositionParams, Void, Void> {
+        private StoryDao storyDao;
+        
+        UpdateStoryPositionAsyncTask(StoryDao storyDao) {
+            this.storyDao = storyDao;
+        }
+        
+        @Override
+        protected Void doInBackground(PositionParams... params) {
+            if (params.length > 0) {
+                PositionParams param = params[0];
+                storyDao.updateStoryPosition(param.storyId, param.position);
+            }
+            return null;
+        }
+    }
+    
+    private static class ReorderStoriesAsyncTask extends AsyncTask<List<Story>, Void, Void> {
+        private StoryDao storyDao;
+        
+        ReorderStoriesAsyncTask(StoryDao storyDao) {
+            this.storyDao = storyDao;
+        }
+        
+        @Override
+        protected Void doInBackground(List<Story>... lists) {
+            if (lists.length > 0 && lists[0] != null && !lists[0].isEmpty()) {
+                storyDao.reorderStories(lists[0]);
+            }
+            return null;
+        }
+    }
+    
+    private static class MoveAllStoriesAsyncTask extends AsyncTask<FolderMoveParams, Void, Void> {
+        private StoryDao storyDao;
+        
+        MoveAllStoriesAsyncTask(StoryDao storyDao) {
+            this.storyDao = storyDao;
+        }
+        
+        @Override
+        protected Void doInBackground(FolderMoveParams... params) {
+            if (params.length > 0) {
+                FolderMoveParams param = params[0];
+                storyDao.moveAllStories(param.fromFolderId, param.toFolderId);
+            }
+            return null;
+        }
+    }
+    
+    // Helper class for story-folder parameters
+    private static class StoryFolderParams {
+        String storyId;
+        String folderId;
+        int position;
+        
+        StoryFolderParams(String storyId, String folderId, int position) {
+            this.storyId = storyId;
+            this.folderId = folderId;
+            this.position = position;
+        }
+    }
+    
+    // Helper class for position parameters
+    private static class PositionParams {
+        String storyId;
+        int position;
+        
+        PositionParams(String storyId, int position) {
+            this.storyId = storyId;
+            this.position = position;
+        }
+    }
+    
+    // Helper class for folder move parameters
+    private static class FolderMoveParams {
+        String fromFolderId;
+        String toFolderId;
+        
+        FolderMoveParams(String fromFolderId, String toFolderId) {
+            this.fromFolderId = fromFolderId;
+            this.toFolderId = toFolderId;
+        }
     }
 }

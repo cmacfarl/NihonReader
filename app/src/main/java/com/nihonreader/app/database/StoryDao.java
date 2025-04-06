@@ -13,32 +13,104 @@ import com.nihonreader.app.models.Story;
 import java.util.List;
 
 /**
- * Data Access Object for Story entities
+ * Data Access Object for Story entity
  */
 @Dao
 public interface StoryDao {
     
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insert(Story story);
+    /**
+     * Get all stories ordered by title
+     */
+    @Query("SELECT * FROM stories ORDER BY title ASC")
+    LiveData<List<Story>> getAllStories();
     
-    @Update
-    void update(Story story);
+    /**
+     * Get stories in a specific folder, ordered by position
+     */
+    @Query("SELECT * FROM stories WHERE folderId = :folderId ORDER BY position ASC")
+    LiveData<List<Story>> getStoriesInFolder(String folderId);
     
-    @Delete
-    void delete(Story story);
+    /**
+     * Get stories that are not in any folder
+     */
+    @Query("SELECT * FROM stories WHERE folderId IS NULL OR folderId = '' ORDER BY position ASC")
+    LiveData<List<Story>> getStoriesWithoutFolder();
     
-    @Query("DELETE FROM stories WHERE id = :storyId")
-    void deleteById(String storyId);
-    
+    /**
+     * Get a story by ID
+     */
     @Query("SELECT * FROM stories WHERE id = :id")
     LiveData<Story> getStoryById(String id);
     
-    @Query("SELECT * FROM stories ORDER BY dateAdded DESC")
-    LiveData<List<Story>> getAllStories();
+    /**
+     * Insert a new story
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insert(Story story);
     
-    @Query("SELECT * FROM stories WHERE isCustom = 1 ORDER BY dateAdded DESC")
-    LiveData<List<Story>> getCustomStories();
+    /**
+     * Update an existing story
+     */
+    @Update
+    void update(Story story);
     
-    @Query("UPDATE stories SET lastOpened = :timestamp WHERE id = :storyId")
-    void updateLastOpened(String storyId, String timestamp);
+    /**
+     * Delete a story
+     */
+    @Delete
+    void delete(Story story);
+    
+    /**
+     * Update story last opened timestamp
+     */
+    @Query("UPDATE stories SET lastOpened = :timestamp WHERE id = :id")
+    void updateLastOpened(String id, String timestamp);
+    
+    /**
+     * Move a story to a folder
+     */
+    @Query("UPDATE stories SET folderId = :folderId, position = :position WHERE id = :storyId")
+    void moveStoryToFolder(String storyId, String folderId, int position);
+    
+    /**
+     * Update story position within its folder
+     */
+    @Query("UPDATE stories SET position = :position WHERE id = :storyId")
+    void updateStoryPosition(String storyId, int position);
+    
+    /**
+     * Shift story positions to make room for a new story
+     */
+    @Query("UPDATE stories SET position = position + 1 WHERE folderId = :folderId AND position >= :fromPosition")
+    void shiftStoryPositionsForInsert(String folderId, int fromPosition);
+    
+    /**
+     * Shift story positions after deletion
+     */
+    @Query("UPDATE stories SET position = position - 1 WHERE folderId = :folderId AND position > :deletedPosition")
+    void shiftStoryPositionsAfterDelete(String folderId, int deletedPosition);
+    
+    /**
+     * Get the highest position value in a folder
+     */
+    @Query("SELECT MAX(position) FROM stories WHERE folderId = :folderId")
+    int getMaxPositionInFolder(String folderId);
+    
+    /**
+     * Get the highest position value for stories without folders
+     */
+    @Query("SELECT MAX(position) FROM stories WHERE folderId IS NULL OR folderId = ''")
+    int getMaxPositionWithoutFolder();
+    
+    /**
+     * Move all stories from one folder to another
+     */
+    @Query("UPDATE stories SET folderId = :newFolderId WHERE folderId = :oldFolderId")
+    void moveAllStories(String oldFolderId, String newFolderId);
+    
+    /**
+     * Reorder stories based on their position values
+     */
+    @Update
+    void reorderStories(List<Story> stories);
 }

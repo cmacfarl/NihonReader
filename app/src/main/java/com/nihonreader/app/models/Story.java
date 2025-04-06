@@ -2,12 +2,25 @@ package com.nihonreader.app.models;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
+import androidx.room.ForeignKey;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 /**
  * Entity representing a story in the application
  */
-@Entity(tableName = "stories")
+@Entity(
+    tableName = "stories",
+    foreignKeys = {
+        @ForeignKey(
+            entity = Folder.class,
+            parentColumns = "id",
+            childColumns = "folderId",
+            onDelete = ForeignKey.SET_NULL
+        )
+    },
+    indices = {@Index("folderId")}
+)
 public class Story {
     
     @PrimaryKey
@@ -20,6 +33,8 @@ public class Story {
     private boolean isCustom;
     private String dateAdded;
     private String lastOpened;
+    private String folderId; // ID of the folder this story belongs to
+    private int position; // Position within the folder for ordering
 
     public Story(@NonNull String id, String title, String author, String description, 
                  boolean isCustom, String dateAdded) {
@@ -29,6 +44,7 @@ public class Story {
         this.description = description;
         this.isCustom = isCustom;
         this.dateAdded = dateAdded;
+        this.position = 0; // Default position
     }
 
     @NonNull
@@ -94,5 +110,21 @@ public class Story {
 
     public void setLastOpened(String lastOpened) {
         this.lastOpened = lastOpened;
+    }
+    
+    public String getFolderId() {
+        return folderId;
+    }
+    
+    public void setFolderId(String folderId) {
+        this.folderId = folderId;
+    }
+    
+    public int getPosition() {
+        return position;
+    }
+    
+    public void setPosition(int position) {
+        this.position = position;
     }
 }

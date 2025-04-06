@@ -76,6 +76,11 @@ public class StoryAdapter extends RecyclerView.Adapter<StoryAdapter.StoryViewHol
                         listener.onEditTimestampsClick(story);
                     }
                     return true;
+                case R.id.action_move_to_folder:
+                    if (listener != null) {
+                        listener.onMoveStoryClick(story);
+                    }
+                    return true;
                 case R.id.action_delete:
                     if (listener != null) {
                         listener.onDeleteStoryClick(story);
@@ -124,10 +129,18 @@ public class StoryAdapter extends RecyclerView.Adapter<StoryAdapter.StoryViewHol
                 Story oldStory = StoryAdapter.this.stories.get(oldItemPosition);
                 Story newStory = stories.get(newItemPosition);
                 
+                // Safely compare folder IDs (either both null or equal)
+                boolean folderIdsEqual = (oldStory.getFolderId() == null && newStory.getFolderId() == null) ||
+                                        (oldStory.getFolderId() != null && 
+                                         newStory.getFolderId() != null && 
+                                         oldStory.getFolderId().equals(newStory.getFolderId()));
+                
                 return oldStory.getTitle().equals(newStory.getTitle()) &&
                        oldStory.getAuthor().equals(newStory.getAuthor()) &&
                        oldStory.getDescription().equals(newStory.getDescription()) &&
-                       oldStory.isCustom() == newStory.isCustom();
+                       oldStory.isCustom() == newStory.isCustom() &&
+                       folderIdsEqual &&
+                       oldStory.getPosition() == newStory.getPosition();
             }
         });
         
@@ -228,5 +241,6 @@ public class StoryAdapter extends RecyclerView.Adapter<StoryAdapter.StoryViewHol
         void onStoryClick(Story story);
         void onEditTimestampsClick(Story story);
         void onDeleteStoryClick(Story story);
+        void onMoveStoryClick(Story story);
     }
 }
