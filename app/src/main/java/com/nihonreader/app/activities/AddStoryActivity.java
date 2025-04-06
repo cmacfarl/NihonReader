@@ -107,7 +107,11 @@ public class AddStoryActivity extends AppCompatActivity {
         
         progressBar = findViewById(R.id.progress_bar);
         textViewStatus = findViewById(R.id.text_view_status);
-        checkboxUseAi = findViewById(R.id.checkbox_use_ai);
+        
+        /*
+         * The AI alignment needs work.  Leave infra here, but take out of the UI.
+         */
+        // checkboxUseAi = findViewById(R.id.checkbox_use_ai);
     }
     
     private void setupObservers() {
