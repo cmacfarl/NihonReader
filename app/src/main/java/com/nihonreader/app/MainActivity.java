@@ -23,7 +23,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -41,8 +40,8 @@ import com.nihonreader.app.viewmodels.FolderViewModel;
 import com.nihonreader.app.viewmodels.StoryListViewModel;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Main activity that displays the list of available stories
@@ -142,9 +141,6 @@ public class MainActivity extends AppCompatActivity implements
             }
         });
         
-        // Setup drag and drop for story reordering
-        setupItemTouchHelper();
-        
         // Setup FAB
         FloatingActionButton fab = findViewById(R.id.fab_add_story);
         fab.setOnClickListener(view -> {
@@ -202,54 +198,6 @@ public class MainActivity extends AppCompatActivity implements
         }
         
         return super.onOptionsItemSelected(item);
-    }
-    
-    private void setupItemTouchHelper() {
-        ItemTouchHelper.SimpleCallback simpleCallback = new ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
-            
-            @Override
-            public boolean onMove(@NonNull RecyclerView recyclerView, 
-                                  @NonNull RecyclerView.ViewHolder viewHolder, 
-                                  @NonNull RecyclerView.ViewHolder target) {
-                int fromPosition = viewHolder.getAdapterPosition();
-                int toPosition = target.getAdapterPosition();
-                
-                if (fromPosition < toPosition) {
-                    for (int i = fromPosition; i < toPosition; i++) {
-                        Collections.swap(currentStories, i, i + 1);
-                    }
-                } else {
-                    for (int i = fromPosition; i > toPosition; i--) {
-                        Collections.swap(currentStories, i, i - 1);
-                    }
-                }
-                
-                storyAdapter.notifyItemMoved(fromPosition, toPosition);
-                
-                // Update positions in the database
-                updateStoryPositions();
-                
-                return true;
-            }
-            
-            @Override
-            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                // Not used
-            }
-        };
-        
-        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleCallback);
-        itemTouchHelper.attachToRecyclerView(recyclerViewStories);
-    }
-    
-    private void updateStoryPositions() {
-        for (int i = 0; i < currentStories.size(); i++) {
-            Story story = currentStories.get(i);
-            story.setPosition(i);
-        }
-        
-        folderViewModel.reorderStories(currentStories);
     }
     
     private void showFolderDialog(Folder folder) {
@@ -311,58 +259,45 @@ public class MainActivity extends AppCompatActivity implements
                 .show();
     }
     
-    private void showMoveToFolderDialog(Story story) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(R.string.move_to_folder);
-        
+    @Override
+    public void onMoveStoryClick(Story story) {
+        // Create an AlertDialog with a list of folders
         folderViewModel.getAllFolders().observe(this, folders -> {
             if (folders == null || folders.isEmpty()) {
+                showCreateFolderDialog(null, story);
                 return;
             }
             
-            String[] folderNames = new String[folders.size() + 1];
-            String[] folderIds = new String[folders.size() + 1];
+            List<String> folderNames = new ArrayList<>();
+            List<String> folderIds = new ArrayList<>();
             
-            folderNames[0] = getString(R.string.all_stories);
-            folderIds[0] = null;
-            
-            for (int i = 0; i < folders.size(); i++) {
-                folderNames[i + 1] = folders.get(i).getName();
-                folderIds[i + 1] = folders.get(i).getId();
+            for (Folder folder : folders) {
+                folderNames.add(folder.getName());
+                folderIds.add(folder.getId());
             }
             
-            int checkedItem = 0;
-            String storyFolderId = story.getFolderId();
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle(getString(R.string.move_to_folder));
             
-            if (storyFolderId != null) {
-                for (int i = 1; i < folderIds.length; i++) {
-                    if (storyFolderId.equals(folderIds[i])) {
-                        checkedItem = i;
-                        break;
-                    }
-                }
-            }
+            // Add "No Folder" option
+            folderNames.add(0, getString(R.string.no_folder));
+            folderIds.add(0, "");
             
-            builder.setSingleChoiceItems(folderNames, checkedItem, (dialog, which) -> {
-                String targetFolderId = folderIds[which];
-                
-                if ((storyFolderId == null && targetFolderId != null) || 
-                    (storyFolderId != null && !storyFolderId.equals(targetFolderId))) {
-                    // Move story to the selected folder
-                    folderViewModel.moveStoryToFolder(story.getId(), targetFolderId, 0);
-                    
-                    // If we're viewing a specific folder, refresh the list
-                    if (currentFolderId != null) {
-                        loadStoriesInFolder(currentFolderId);
-                    } else {
-                        loadAllStories();
-                    }
+            // Add "Create New Folder" option
+            folderNames.add(getString(R.string.create_new_folder));
+            folderIds.add("");
+            
+            builder.setItems(folderNames.toArray(new String[0]), (dialog, which) -> {
+                if (which == folderNames.size() - 1) {
+                    // "Create New Folder" selected
+                    showCreateFolderDialog(null, story);
+                } else {
+                    String selectedFolderId = folderIds.get(which);
+                    // Move story to selected folder
+                    folderViewModel.moveStoryToFolder(story.getId(), selectedFolderId);
                 }
-                
-                dialog.dismiss();
             });
             
-            builder.setNegativeButton(R.string.cancel, null);
             builder.show();
         });
     }
@@ -464,9 +399,42 @@ public class MainActivity extends AppCompatActivity implements
         showDeleteConfirmationDialog(story);
     }
     
-    @Override
-    public void onMoveStoryClick(Story story) {
-        showMoveToFolderDialog(story);
+    private void showCreateFolderDialog(Folder parentFolder, Story storyToMove) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View view = getLayoutInflater().inflate(R.layout.dialog_folder, null);
+        EditText editFolderName = view.findViewById(R.id.editFolderName);
+        
+        builder.setTitle(R.string.create_folder);
+        builder.setView(view)
+                .setPositiveButton(R.string.save, (dialog, which) -> {
+                    String folderName = editFolderName.getText().toString().trim();
+                    
+                    if (folderName.isEmpty()) {
+                        Toast.makeText(this, R.string.folder_name_required, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    
+                    // Create new folder
+                    String newFolderId = UUID.randomUUID().toString();
+                    folderViewModel.createFolder(folderName, 0);
+                    
+                    // Move story to the new folder if provided
+                    if (storyToMove != null) {
+                        // We need to wait a moment for the folder to be created and get its ID
+                        folderViewModel.getAllFolders().observe(this, folders -> {
+                            if (folders != null) {
+                                for (Folder folder : folders) {
+                                    if (folder.getName().equals(folderName)) {
+                                        folderViewModel.moveStoryToFolder(storyToMove.getId(), folder.getId());
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
     
     private void showDeleteConfirmationDialog(Story story) {

@@ -105,16 +105,8 @@ public class StoryRepository {
         return storyDao.getStoriesWithoutFolder();
     }
     
-    public void moveStoryToFolder(String storyId, String folderId, int position) {
-        new MoveStoryToFolderAsyncTask(storyDao).execute(new StoryFolderParams(storyId, folderId, position));
-    }
-    
-    public void updateStoryPosition(String storyId, int position) {
-        new UpdateStoryPositionAsyncTask(storyDao).execute(new PositionParams(storyId, position));
-    }
-    
-    public void reorderStories(List<Story> stories) {
-        new ReorderStoriesAsyncTask(storyDao).execute(stories);
+    public void moveStoryToFolder(String storyId, String folderId) {
+        new MoveStoryToFolderAsyncTask(storyDao).execute(new StoryFolderParams(storyId, folderId));
     }
     
     public void moveAllStories(String fromFolderId, String toFolderId) {
@@ -530,45 +522,7 @@ public class StoryRepository {
         protected Void doInBackground(StoryFolderParams... params) {
             if (params.length > 0) {
                 StoryFolderParams param = params[0];
-                
-                // Make room for the story in the target folder
-                storyDao.shiftStoryPositionsForInsert(param.folderId, param.position);
-                
-                // Move the story to the folder
-                storyDao.moveStoryToFolder(param.storyId, param.folderId, param.position);
-            }
-            return null;
-        }
-    }
-    
-    private static class UpdateStoryPositionAsyncTask extends AsyncTask<PositionParams, Void, Void> {
-        private StoryDao storyDao;
-        
-        UpdateStoryPositionAsyncTask(StoryDao storyDao) {
-            this.storyDao = storyDao;
-        }
-        
-        @Override
-        protected Void doInBackground(PositionParams... params) {
-            if (params.length > 0) {
-                PositionParams param = params[0];
-                storyDao.updateStoryPosition(param.storyId, param.position);
-            }
-            return null;
-        }
-    }
-    
-    private static class ReorderStoriesAsyncTask extends AsyncTask<List<Story>, Void, Void> {
-        private StoryDao storyDao;
-        
-        ReorderStoriesAsyncTask(StoryDao storyDao) {
-            this.storyDao = storyDao;
-        }
-        
-        @Override
-        protected Void doInBackground(List<Story>... lists) {
-            if (lists.length > 0 && lists[0] != null && !lists[0].isEmpty()) {
-                storyDao.reorderStories(lists[0]);
+                storyDao.moveStoryToFolder(param.storyId, param.folderId);
             }
             return null;
         }
@@ -595,23 +549,10 @@ public class StoryRepository {
     private static class StoryFolderParams {
         String storyId;
         String folderId;
-        int position;
         
-        StoryFolderParams(String storyId, String folderId, int position) {
+        StoryFolderParams(String storyId, String folderId) {
             this.storyId = storyId;
             this.folderId = folderId;
-            this.position = position;
-        }
-    }
-    
-    // Helper class for position parameters
-    private static class PositionParams {
-        String storyId;
-        int position;
-        
-        PositionParams(String storyId, int position) {
-            this.storyId = storyId;
-            this.position = position;
         }
     }
     

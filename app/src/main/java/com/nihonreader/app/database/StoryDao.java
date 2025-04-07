@@ -21,19 +21,19 @@ public interface StoryDao {
     /**
      * Get all stories ordered by title
      */
-    @Query("SELECT * FROM stories ORDER BY title ASC")
+    @Query("SELECT * FROM stories ORDER BY title COLLATE NOCASE ASC")
     LiveData<List<Story>> getAllStories();
     
     /**
-     * Get stories in a specific folder, ordered by position
+     * Get stories in a specific folder, ordered by title
      */
-    @Query("SELECT * FROM stories WHERE folderId = :folderId ORDER BY position ASC")
+    @Query("SELECT * FROM stories WHERE folderId = :folderId ORDER BY title COLLATE NOCASE ASC")
     LiveData<List<Story>> getStoriesInFolder(String folderId);
     
     /**
      * Get stories that are not in any folder
      */
-    @Query("SELECT * FROM stories WHERE folderId IS NULL OR folderId = '' ORDER BY position ASC")
+    @Query("SELECT * FROM stories WHERE folderId IS NULL OR folderId = '' ORDER BY title COLLATE NOCASE ASC")
     LiveData<List<Story>> getStoriesWithoutFolder();
     
     /**
@@ -69,38 +69,8 @@ public interface StoryDao {
     /**
      * Move a story to a folder
      */
-    @Query("UPDATE stories SET folderId = :folderId, position = :position WHERE id = :storyId")
-    void moveStoryToFolder(String storyId, String folderId, int position);
-    
-    /**
-     * Update story position within its folder
-     */
-    @Query("UPDATE stories SET position = :position WHERE id = :storyId")
-    void updateStoryPosition(String storyId, int position);
-    
-    /**
-     * Shift story positions to make room for a new story
-     */
-    @Query("UPDATE stories SET position = position + 1 WHERE folderId = :folderId AND position >= :fromPosition")
-    void shiftStoryPositionsForInsert(String folderId, int fromPosition);
-    
-    /**
-     * Shift story positions after deletion
-     */
-    @Query("UPDATE stories SET position = position - 1 WHERE folderId = :folderId AND position > :deletedPosition")
-    void shiftStoryPositionsAfterDelete(String folderId, int deletedPosition);
-    
-    /**
-     * Get the highest position value in a folder
-     */
-    @Query("SELECT MAX(position) FROM stories WHERE folderId = :folderId")
-    int getMaxPositionInFolder(String folderId);
-    
-    /**
-     * Get the highest position value for stories without folders
-     */
-    @Query("SELECT MAX(position) FROM stories WHERE folderId IS NULL OR folderId = ''")
-    int getMaxPositionWithoutFolder();
+    @Query("UPDATE stories SET folderId = :folderId WHERE id = :storyId")
+    void moveStoryToFolder(String storyId, String folderId);
     
     /**
      * Move all stories from one folder to another
@@ -109,15 +79,9 @@ public interface StoryDao {
     void moveAllStories(String oldFolderId, String newFolderId);
     
     /**
-     * Reorder stories based on their position values
-     */
-    @Update
-    void reorderStories(List<Story> stories);
-    
-    /**
      * Get all stories (non-LiveData version for export)
      */
-    @Query("SELECT * FROM stories")
+    @Query("SELECT * FROM stories ORDER BY title COLLATE NOCASE ASC")
     List<Story> getAllStoriesSync();
     
     /**

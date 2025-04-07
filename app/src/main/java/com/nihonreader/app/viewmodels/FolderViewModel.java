@@ -65,15 +65,7 @@ public class FolderViewModel extends AndroidViewModel {
         folderRepository.delete(folder);
     }
     
-    public void moveStoryToFolder(String storyId, String folderId, int position) {
-        storyRepository.moveStoryToFolder(storyId, folderId, position);
-    }
-    
-    public void updateStoryPosition(String storyId, int position) {
-        storyRepository.updateStoryPosition(storyId, position);
-    }
-    
-    public void reorderStories(List<Story> stories) {
-        storyRepository.reorderStories(stories);
+    public void moveStoryToFolder(String storyId, String folderId) {
+        storyRepository.moveStoryToFolder(storyId, folderId);
     }
 } 

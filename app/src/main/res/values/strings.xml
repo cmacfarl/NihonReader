@@ -85,4 +85,6 @@
     <string name="import_error">Error importing stories</string>
     <string name="exporting">Exporting stories...</string>
     <string name="importing">Importing stories...</string>
+    <string name="no_folder">No Folder</string>
+    <string name="create_new_folder">Create New Folder</string>
 </resources>
