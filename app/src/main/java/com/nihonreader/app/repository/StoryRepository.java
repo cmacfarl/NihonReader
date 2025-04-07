@@ -170,10 +170,11 @@ public class StoryRepository {
             Uri audioUri,
             Uri timingUri,
             boolean useAiAlignment,
+            String folderId,
             ImportStoryCallback callback) {
         
         new ImportStoryAsyncTask(application, storyDao, storyContentDao, userProgressDao, useAiAlignment, callback)
-                .execute(new Object[]{title, author, description, textUri, audioUri, timingUri});
+                .execute(new ImportStoryParams(title, author, description, textUri, audioUri, timingUri, useAiAlignment, folderId));
     }
     
     // AsyncTask classes for database operations
@@ -326,7 +327,7 @@ public class StoryRepository {
         }
     }
     
-    private static class ImportStoryAsyncTask extends AsyncTask<Object, Void, String> {
+    private static class ImportStoryAsyncTask extends AsyncTask<ImportStoryParams, Void, String> {
         private Context context;
         private StoryDao storyDao;
         private StoryContentDao storyContentDao;
@@ -345,14 +346,15 @@ public class StoryRepository {
         }
         
         @Override
-        protected String doInBackground(Object... params) {
+        protected String doInBackground(ImportStoryParams... params) {
             try {
-                String title = (String) params[0];
-                String author = (String) params[1];
-                String description = (String) params[2];
-                Uri textUri = (Uri) params[3];
-                Uri audioUri = (Uri) params[4];
-                Uri timingUri = (Uri) params[5];
+                String title = params[0].title;
+                String author = params[0].author;
+                String description = params[0].description;
+                Uri textUri = params[0].textUri;
+                Uri audioUri = params[0].audioUri;
+                Uri timingUri = params[0].timingUri;
+                String folderId = params[0].folderId;
                 
                 // Generate unique ID
                 String storyId = "custom_" + UUID.randomUUID().toString();
@@ -453,6 +455,11 @@ public class StoryRepository {
                         true,
                         String.valueOf(System.currentTimeMillis())
                 );
+                
+                // Set folder ID if provided
+                if (folderId != null) {
+                    story.setFolderId(folderId);
+                }
                 
                 // Create story content
                 StoryContent storyContent = new StoryContent(
@@ -605,6 +612,30 @@ public class StoryRepository {
         FolderMoveParams(String fromFolderId, String toFolderId) {
             this.fromFolderId = fromFolderId;
             this.toFolderId = toFolderId;
+        }
+    }
+    
+    // Helper class for import story parameters
+    private static class ImportStoryParams {
+        String title;
+        String author;
+        String description;
+        Uri textUri;
+        Uri audioUri;
+        Uri timingUri;
+        boolean useAiAlignment;
+        String folderId;
+        
+        ImportStoryParams(String title, String author, String description, Uri textUri, Uri audioUri, Uri timingUri,
+                         boolean useAiAlignment, String folderId) {
+            this.title = title;
+            this.author = author;
+            this.description = description;
+            this.textUri = textUri;
+            this.audioUri = audioUri;
+            this.timingUri = timingUri;
+            this.useAiAlignment = useAiAlignment;
+            this.folderId = folderId;
         }
     }
 }

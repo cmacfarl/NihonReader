@@ -40,10 +40,13 @@ import java.util.List;
  */
 public class AddStoryActivity extends AppCompatActivity {
     
+    public static final String EXTRA_FOLDER_ID = "com.nihonreader.app.EXTRA_FOLDER_ID";
+    
     private static final int REQUEST_PICK_TEXT = 1;
     private static final int REQUEST_PICK_AUDIO = 2;
     
     private AddStoryViewModel viewModel;
+    private String folderId;
     
     private TextInputEditText editTextTitle;
     private TextInputEditText editTextAuthor;
@@ -68,6 +71,9 @@ public class AddStoryActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_story);
+        
+        // Get folder ID from intent if available
+        folderId = getIntent().getStringExtra(EXTRA_FOLDER_ID);
         
         // Setup toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -216,7 +222,7 @@ public class AddStoryActivity extends AppCompatActivity {
         // Import button
         buttonImport.setOnClickListener(v -> {
             if (viewModel.validateInputs()) {
-                viewModel.importStory(new StoryRepository.ImportStoryCallback() {
+                viewModel.importStory(folderId, new StoryRepository.ImportStoryCallback() {
                     @Override
                     public void onSuccess(String storyId) {
                         runOnUiThread(() -> {
