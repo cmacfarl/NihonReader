@@ -215,7 +215,7 @@ public class StoryReaderActivity extends AppCompatActivity {
             mediaPlayer.setOnCompletionListener(mp -> {
                 viewModel.setIsPlaying(false);
                 mediaPlayer.seekTo(0);
-                updateSeekBarProgress();
+                // updateSeekBarProgress();
             });
             
             // Hide progress
