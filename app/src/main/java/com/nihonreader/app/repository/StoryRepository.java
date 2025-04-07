@@ -9,6 +9,9 @@ import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.nihonreader.app.database.AppDatabase;
 import com.nihonreader.app.database.StoryContentDao;
 import com.nihonreader.app.database.StoryDao;
@@ -21,11 +24,19 @@ import com.nihonreader.app.models.UserProgress;
 import com.nihonreader.app.models.VocabularyItem;
 import com.nihonreader.app.utils.AudioUtils;
 import com.nihonreader.app.utils.FileUtils;
+import com.nihonreader.app.utils.JSONExportImportUtils;
 import com.nihonreader.app.utils.SpeechAlignmentService;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -636,6 +647,237 @@ public class StoryRepository {
             this.timingUri = timingUri;
             this.useAiAlignment = useAiAlignment;
             this.folderId = folderId;
+        }
+    }
+    
+    // Bulk export/import methods
+    
+    /**
+     * Export all stories to a JSON file
+     * @param outputUri URI to write the exported file
+     * @param callback Callback to notify about export results
+     */
+    public void exportAllStories(Uri outputUri, ExportImportCallback callback) {
+        new ExportAllStoriesAsyncTask(application, storyDao, storyContentDao, callback).execute(outputUri);
+    }
+    
+    /**
+     * Import stories from a JSON file
+     * @param inputUri URI of the file to import
+     * @param callback Callback to notify about import results
+     */
+    public void importAllStories(Uri inputUri, ExportImportCallback callback) {
+        new ImportAllStoriesAsyncTask(application, storyDao, storyContentDao, userProgressDao, callback).execute(inputUri);
+    }
+    
+    /**
+     * Callback for bulk export/import operations
+     */
+    public interface ExportImportCallback {
+        void onSuccess(String message);
+        void onError(String errorMessage);
+        void onProgressUpdate(String status);
+    }
+    
+    /**
+     * AsyncTask for exporting all stories
+     */
+    private static class ExportAllStoriesAsyncTask extends AsyncTask<Uri, String, Boolean> {
+        private Context context;
+        private StoryDao storyDao;
+        private StoryContentDao storyContentDao;
+        private ExportImportCallback callback;
+        private String errorMessage;
+        private int storyCount;
+        
+        ExportAllStoriesAsyncTask(Context context, StoryDao storyDao, StoryContentDao storyContentDao, ExportImportCallback callback) {
+            this.context = context;
+            this.storyDao = storyDao;
+            this.storyContentDao = storyContentDao;
+            this.callback = callback;
+        }
+        
+        @Override
+        protected void onPreExecute() {
+            if (callback != null) {
+                callback.onProgressUpdate("Starting export...");
+            }
+        }
+        
+        @Override
+        protected void onProgressUpdate(String... values) {
+            if (callback != null && values.length > 0) {
+                callback.onProgressUpdate(values[0]);
+            }
+        }
+        
+        @Override
+        protected Boolean doInBackground(Uri... uris) {
+            if (uris.length == 0) {
+                errorMessage = "No output URI provided";
+                return false;
+            }
+            
+            Uri outputUri = uris[0];
+            
+            try {
+                // Get all stories
+                publishProgress("Retrieving stories...");
+                List<Story> stories = storyDao.getAllStoriesSync();
+                
+                storyCount = stories.size();
+                
+                if (stories.isEmpty()) {
+                    errorMessage = "No stories to export";
+                    return false;
+                }
+                
+                // Get content for each story
+                publishProgress("Retrieving story content...");
+                Map<String, StoryContent> contentMap = new HashMap<>();
+                for (Story story : stories) {
+                    StoryContent content = storyContentDao.getContentForStorySync(story.getId());
+                    if (content != null) {
+                        contentMap.put(story.getId(), content);
+                    }
+                }
+                
+                // Export to ZIP
+                publishProgress("Creating export package with audio files...");
+                boolean success = JSONExportImportUtils.exportToZip(context, stories, contentMap, outputUri);
+                
+                if (!success) {
+                    errorMessage = "Failed to write export file";
+                    return false;
+                }
+                
+                return true;
+            } catch (Exception e) {
+                Log.e("StoryRepository", "Error exporting stories", e);
+                errorMessage = "Error exporting stories: " + e.getMessage();
+                return false;
+            }
+        }
+        
+        @Override
+        protected void onPostExecute(Boolean success) {
+            if (callback != null) {
+                if (success) {
+                    callback.onSuccess("Successfully exported " + storyCount + " stories");
+                } else {
+                    callback.onError(errorMessage != null ? errorMessage : "Unknown error during export");
+                }
+            }
+        }
+    }
+    
+    /**
+     * AsyncTask for importing stories
+     */
+    private static class ImportAllStoriesAsyncTask extends AsyncTask<Uri, String, Boolean> {
+        private Context context;
+        private StoryDao storyDao;
+        private StoryContentDao storyContentDao;
+        private UserProgressDao userProgressDao;
+        private ExportImportCallback callback;
+        private String resultMessage;
+        private String errorMessage;
+        
+        ImportAllStoriesAsyncTask(Context context, StoryDao storyDao, StoryContentDao storyContentDao, 
+                                 UserProgressDao userProgressDao, ExportImportCallback callback) {
+            this.context = context;
+            this.storyDao = storyDao;
+            this.storyContentDao = storyContentDao;
+            this.userProgressDao = userProgressDao;
+            this.callback = callback;
+        }
+        
+        @Override
+        protected void onPreExecute() {
+            if (callback != null) {
+                callback.onProgressUpdate("Starting import...");
+            }
+        }
+        
+        @Override
+        protected void onProgressUpdate(String... values) {
+            if (callback != null && values.length > 0) {
+                callback.onProgressUpdate(values[0]);
+            }
+        }
+        
+        @Override
+        protected Boolean doInBackground(Uri... uris) {
+            if (uris.length == 0) {
+                errorMessage = "No input URI provided";
+                return false;
+            }
+            
+            Uri inputUri = uris[0];
+            
+            try {
+                // Import from ZIP
+                publishProgress("Reading import package...");
+                JSONExportImportUtils.ImportResult result = JSONExportImportUtils.importFromZip(context, inputUri);
+                
+                if (result.stories.isEmpty()) {
+                    errorMessage = "No stories found in the import file";
+                    return false;
+                }
+                
+                // Insert stories and content into database
+                publishProgress("Importing stories into database...");
+                
+                List<Story> stories = result.stories;
+                List<StoryContent> contents = result.contents;
+                
+                // Generate progress entries for each imported story
+                List<UserProgress> progresses = new ArrayList<>();
+                for (Story story : stories) {
+                    progresses.add(new UserProgress(story.getId()));
+                }
+                
+                // Insert all the data into the database
+                for (Story story : stories) {
+                    storyDao.insert(story);
+                }
+                
+                for (StoryContent content : contents) {
+                    storyContentDao.insert(content);
+                }
+                
+                for (UserProgress progress : progresses) {
+                    userProgressDao.insert(progress);
+                }
+                
+                StringBuilder message = new StringBuilder();
+                message.append("Import complete: ");
+                message.append(stories.size()).append(" stories imported");
+                if (result.skippedStories > 0) {
+                    message.append(", ").append(result.skippedStories).append(" skipped");
+                }
+                if (result.failedStories > 0) {
+                    message.append(", ").append(result.failedStories).append(" failed");
+                }
+                resultMessage = message.toString();
+                
+                return !stories.isEmpty();
+            } catch (Exception e) {
+                Log.e("StoryRepository", "Error importing stories", e);
+                errorMessage = "Error importing stories: " + e.getMessage();
+                return false;
+            }
+        }
+        
+        @Override
+        protected void onPostExecute(Boolean success) {
+            if (callback != null) {
+                if (success) {
+                    callback.onSuccess(resultMessage);
+                } else {
+                    callback.onError(errorMessage != null ? errorMessage : "Unknown error during import");
+                }
+            }
         }
     }
 }
