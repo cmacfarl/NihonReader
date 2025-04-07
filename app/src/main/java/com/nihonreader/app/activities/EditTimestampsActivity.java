@@ -419,13 +419,26 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
     @Override
     public void onPlaySegment(int position, long startTime, long endTime) {
         if (mediaPlayer != null) {
-            // Seek to the segment's start time
-            mediaPlayer.seekTo((int) startTime);
-            updateSeekBarProgress();
-            
-            // Start playback if not already playing
-            if (!mediaPlayer.isPlaying()) {
-                togglePlayback();
+            // If we're already capturing time for this segment, stop capturing
+            if (isCapturingTime && captureSegmentPosition == position) {
+                long captureEndTime = mediaPlayer.getCurrentPosition();
+                completeTimeCapture(captureStartTime, captureEndTime);
+                
+                // Reset the button text back to "Play Segment"
+                RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(position);
+                if (viewHolder != null && viewHolder instanceof TimestampAdapter.TimestampViewHolder) {
+                    TimestampAdapter.TimestampViewHolder holder = (TimestampAdapter.TimestampViewHolder) viewHolder;
+                    holder.buttonPlaySegment.setText(R.string.play_segment);
+                }
+                
+                // Also pause the audio playback
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.pause();
+                    buttonPlayPause.setImageResource(android.R.drawable.ic_media_play);
+                    stopUpdatingSeekBar();
+                }
+                
+                return;
             }
         }
     }
@@ -446,6 +459,13 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
         if (adapter != null && position >= 0 && position < adapter.getItemCount()) {
             AudioSegment segment = adapter.getSegments().get(position);
             
+            // Update the button text to indicate capturing
+            RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(position);
+            if (viewHolder != null && viewHolder instanceof TimestampAdapter.TimestampViewHolder) {
+                TimestampAdapter.TimestampViewHolder holder = (TimestampAdapter.TimestampViewHolder) viewHolder;
+                holder.buttonPlaySegment.setText(R.string.capturing);
+            }
+            
             // If not playing or if currently at a different position, seek to this segment's start time
             if (mediaPlayer != null) {
                 // Seek to the current segment's start time
@@ -464,7 +484,7 @@ public class EditTimestampsActivity extends AppCompatActivity implements Timesta
         }
         
         // Display a toast to inform the user
-        Toast.makeText(this, "Recording start/end times. Press pause when segment ends.", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "Recording start/end times. Press pause or 'Capturing...' when segment ends.", Toast.LENGTH_LONG).show();
     }
     
     @Override

@@ -135,18 +135,15 @@ public class AddStoryViewModel extends AndroidViewModel {
         return importStatus;
     }
     
-    public void importStory(StoryRepository.ImportStoryCallback callback) {
-        if (!validateInputs()) {
-            callback.onError("Please fill in all required fields");
-            return;
-        }
-
-        // Get the text content from the text file
-        String textContent = null;
-        try {
-            textContent = FileUtils.readTextFromUri(getApplication(), textFileUri.getValue());
-        } catch (IOException e) {
-            callback.onError("Failed to read text file: " + e.getMessage());
+    public void importStory(String folderId, StoryRepository.ImportStoryCallback callback) {
+        isImporting.setValue(true);
+        importStatus.setValue("Importing story...");
+        
+        // Get text content
+        String textContent = this.textContent.getValue();
+        if (textContent == null || textContent.isEmpty()) {
+            callback.onError("Text content is empty");
+            isImporting.setValue(false);
             return;
         }
 
@@ -189,6 +186,7 @@ public class AddStoryViewModel extends AndroidViewModel {
                 audioFileUri.getValue(),
                 timingUri,
                 useAiAlignment.getValue(),
+                folderId,
                 callback
             );
         } catch (IOException e) {

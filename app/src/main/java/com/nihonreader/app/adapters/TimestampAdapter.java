@@ -77,15 +77,18 @@ public class TimestampAdapter extends RecyclerView.Adapter<TimestampAdapter.Time
         // Play segment button - now used to start time capture
         holder.buttonPlaySegment.setOnClickListener(v -> {
             if (listener != null) {
-                // This now signals the start of time capture for this segment
-                listener.onBeginTimeCaptureForSegment(position);
+                // Check the current button state
+                boolean isCapturing = holder.buttonPlaySegment.getText().toString().equals(
+                        holder.itemView.getContext().getString(R.string.capturing));
                 
-                // Change button text to indicate it's in capture mode
-                holder.buttonPlaySegment.setText(R.string.capturing);
-                
-                // Start playback from the segment's current start time
-                if (holder.segment != null) {
-                    listener.onPlaySegment(position, holder.segment.getStart(), holder.segment.getEnd());
+                if (isCapturing) {
+                    // If currently capturing, just call onPlaySegment to stop the capture
+                    if (holder.segment != null) {
+                        listener.onPlaySegment(position, holder.segment.getStart(), holder.segment.getEnd());
+                    }
+                } else {
+                    // If not capturing, begin capture
+                    listener.onBeginTimeCaptureForSegment(position);
                 }
             }
         });

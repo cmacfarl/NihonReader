@@ -145,6 +145,10 @@ public class MainActivity extends AppCompatActivity implements
         FloatingActionButton fab = findViewById(R.id.fab_add_story);
         fab.setOnClickListener(view -> {
             Intent intent = new Intent(MainActivity.this, AddStoryActivity.class);
+            // Pass the currently selected folder ID if not "All Stories"
+            if (currentFolderId != null) {
+                intent.putExtra(AddStoryActivity.EXTRA_FOLDER_ID, currentFolderId);
+            }
             startActivity(intent);
         });
         
