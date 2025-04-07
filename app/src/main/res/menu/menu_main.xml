@@ -11,4 +11,14 @@
         android:title="@string/create_folder"
         android:iconTint="@android:color/white"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_export_stories"
+        android:title="@string/export_stories"
+        android:iconTint="@android:color/white"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_import_stories"
+        android:title="@string/import_stories"
+        android:iconTint="@android:color/white"
+        app:showAsAction="never" />
 </menu> 

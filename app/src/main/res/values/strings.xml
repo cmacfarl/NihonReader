@@ -78,4 +78,11 @@
     <string name="action_edit_folder">Edit Folder</string>
     <string name="action_delete_folder">Delete Folder</string>
     <string name="cannot_edit_all_stories_folder">Cannot edit the All Stories folder</string>
+    <string name="export_stories">Export All Stories</string>
+    <string name="import_stories">Import Stories</string>
+    <string name="export_success">Stories exported successfully</string>
+    <string name="export_error">Error exporting stories</string>
+    <string name="import_error">Error importing stories</string>
+    <string name="exporting">Exporting stories...</string>
+    <string name="importing">Importing stories...</string>
 </resources>

@@ -113,4 +113,16 @@ public interface StoryDao {
      */
     @Update
     void reorderStories(List<Story> stories);
+    
+    /**
+     * Get all stories (non-LiveData version for export)
+     */
+    @Query("SELECT * FROM stories")
+    List<Story> getAllStoriesSync();
+    
+    /**
+     * Get total story count
+     */
+    @Query("SELECT COUNT(*) FROM stories")
+    int getStoryCount();
 }

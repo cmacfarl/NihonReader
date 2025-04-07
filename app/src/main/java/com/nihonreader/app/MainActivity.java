@@ -1,6 +1,9 @@
 package com.nihonreader.app;
 
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
@@ -16,7 +19,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
@@ -32,6 +35,7 @@ import com.nihonreader.app.adapters.FolderSpinnerAdapter;
 import com.nihonreader.app.adapters.StoryAdapter;
 import com.nihonreader.app.models.Folder;
 import com.nihonreader.app.models.Story;
+import com.nihonreader.app.repository.StoryRepository;
 import com.nihonreader.app.utils.FileUtils;
 import com.nihonreader.app.viewmodels.FolderViewModel;
 import com.nihonreader.app.viewmodels.StoryListViewModel;
@@ -188,6 +192,12 @@ public class MainActivity extends AppCompatActivity implements
             } else {
                 Toast.makeText(this, R.string.cannot_edit_all_stories_folder, Toast.LENGTH_SHORT).show();
             }
+            return true;
+        } else if (id == R.id.action_export_stories) {
+            exportStories();
+            return true;
+        } else if (id == R.id.action_import_stories) {
+            importStories();
             return true;
         }
         
@@ -470,5 +480,141 @@ public class MainActivity extends AppCompatActivity implements
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+    
+    private static final int REQUEST_EXPORT_STORIES = 1001;
+    private static final int REQUEST_IMPORT_STORIES = 1002;
+    
+    /**
+     * Initiates the process to export all stories
+     */
+    private void exportStories() {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/zip");
+        intent.putExtra(Intent.EXTRA_TITLE, "nihon_reader_stories_export.zip");
+        startActivityForResult(intent, REQUEST_EXPORT_STORIES);
+    }
+    
+    /**
+     * Initiates the process to import stories
+     */
+    private void importStories() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/zip");
+        startActivityForResult(intent, REQUEST_IMPORT_STORIES);
+    }
+    
+    /**
+     * Shows a progress dialog with the given message
+     */
+    private ProgressDialog showProgressDialog(String message) {
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage(message);
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+        return progressDialog;
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            
+            if (requestCode == REQUEST_EXPORT_STORIES) {
+                // Show progress dialog
+                ProgressDialog progressDialog = showProgressDialog(getString(R.string.exporting));
+                
+                // Create repository instance
+                StoryRepository repository = new StoryRepository(getApplication());
+                
+                // Export stories
+                repository.exportAllStories(uri, new StoryRepository.ExportImportCallback() {
+                    @Override
+                    public void onSuccess(String message) {
+                        runOnUiThread(() -> {
+                            // Dismiss progress dialog
+                            progressDialog.dismiss();
+                            
+                            // Show success toast
+                            Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                        });
+                    }
+                    
+                    @Override
+                    public void onError(String errorMessage) {
+                        runOnUiThread(() -> {
+                            // Dismiss progress dialog
+                            progressDialog.dismiss();
+                            
+                            // Show error toast
+                            Toast.makeText(MainActivity.this, 
+                                         getString(R.string.export_error) + ": " + errorMessage, 
+                                         Toast.LENGTH_LONG).show();
+                        });
+                    }
+                    
+                    @Override
+                    public void onProgressUpdate(String status) {
+                        runOnUiThread(() -> {
+                            // Update progress dialog message
+                            progressDialog.setMessage(status);
+                        });
+                    }
+                });
+            } else if (requestCode == REQUEST_IMPORT_STORIES) {
+                // Show progress dialog
+                ProgressDialog progressDialog = showProgressDialog(getString(R.string.importing));
+                
+                // Create repository instance
+                StoryRepository repository = new StoryRepository(getApplication());
+                
+                // Import stories
+                repository.importAllStories(uri, new StoryRepository.ExportImportCallback() {
+                    @Override
+                    public void onSuccess(String message) {
+                        runOnUiThread(() -> {
+                            // Dismiss progress dialog
+                            progressDialog.dismiss();
+                            
+                            // Show success toast
+                            Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                            
+                            // Reload stories
+                            if (currentFolderId == null) {
+                                loadAllStories();
+                            } else {
+                                loadStoriesInFolder(currentFolderId);
+                            }
+                        });
+                    }
+                    
+                    @Override
+                    public void onError(String errorMessage) {
+                        runOnUiThread(() -> {
+                            // Dismiss progress dialog
+                            progressDialog.dismiss();
+                            
+                            // Show error toast
+                            Toast.makeText(MainActivity.this, 
+                                         getString(R.string.import_error) + ": " + errorMessage, 
+                                         Toast.LENGTH_LONG).show();
+                        });
+                    }
+                    
+                    @Override
+                    public void onProgressUpdate(String status) {
+                        runOnUiThread(() -> {
+                            // Update progress dialog message
+                            progressDialog.setMessage(status);
+                        });
+                    }
+                });
+            }
+        }
     }
 }

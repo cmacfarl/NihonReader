@@ -30,4 +30,7 @@ public interface StoryContentDao {
     
     @Query("SELECT * FROM story_contents WHERE storyId = :storyId")
     LiveData<StoryContent> getContentForStory(String storyId);
+    
+    @Query("SELECT * FROM story_contents WHERE storyId = :storyId")
+    StoryContent getContentForStorySync(String storyId);
 }
