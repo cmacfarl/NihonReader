@@ -39,18 +39,6 @@ app/
 - Android SDK 21+
 - Java 8+
 
-## Getting Started
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/nihon-reader.git
-cd nihon-reader/NihonReaderAndroid
-```
-
-2. Open the project in Android Studio
-
-3. Build and run the app on your device or emulator
-
 ## Usage
 
 ### Story Library
